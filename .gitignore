@@ -1,0 +1,9 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Local analysis inputs/outputs (keep the workspace clean; see AGENTS.md)
+uploads/
+outputs/
+*.tmp
