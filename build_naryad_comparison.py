@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Сравнение состава данных нарядов-допусков из DOCX."""
+"""Сравнение: какую составляющую нужно указывать в каком наряде-допуске."""
 
 from __future__ import annotations
 
@@ -18,53 +18,48 @@ from openpyxl.utils import get_column_letter
 INPUT = Path("/home/ubuntu/.cursor/projects/workspace/uploads/_____-_______629d.docx")
 OUTPUT = Path("/workspace/Сравнение_нарядов-допусков.xlsx")
 
-# Унифицированные поля для сравнения состава данных
-FIELDS = [
-    ("Номер наряда-допуска", [r"наряд[-\s]?допуск\s*n", r"наряд[-\s]?допуск\s*№", r"наряд[-\s]?допуск\s*№"]),
-    ("Организация / наименование организации", [r"организац", r"наименование организации"]),
-    ("Подразделение", [r"подразделени"]),
-    ("Место / объект / содержание работ", [r"поручается", r"наименование работ", r"место производ", r"содержание.*работ", r"характеристика.*работ", r"объект"]),
-    ("Дата и время начала работ", [r"начать", r"начало работ", r"начать работ"]),
-    ("Дата и время окончания работ", [r"закончить", r"окончание работ", r"окончить работ"]),
-    ("Срок действия / действителен до", [r"действителен до", r"срок действия"]),
-    ("Выдающий наряд (ФИО, должность)", [r"наряд[-\s]?допуск выдал", r"наряд выдал", r"лицо,?\s*выдавшее"]),
-    ("Производитель работ", [r"производител"]),
-    ("Ответственный руководитель работ", [r"ответственн\w+\s+руководител", r"руководител\w*\s+работ"]),
-    ("Допускающий", [r"допускающ"]),
-    ("Наблюдающий", [r"наблюдающ"]),
-    ("Состав бригады / исполнителей", [r"членами бригады", r"состав.*бригад", r"состав исполнител", r"бригадой в составе", r"бригаде в составе"]),
-    ("Группа по электробезопасности", [r"электробезопасност"]),
-    ("Профессия / должность / квалификация членов бригады", [r"професси", r"квалификац"]),
-    ("Мероприятия по подготовке рабочих мест", [r"подготовк\w+\s+рабоч", r"мероприяти.*подготов", r"до начала производства"]),
-    ("Меры безопасности при производстве работ", [r"меры безопасности", r"в процессе производства", r"обеспечить следующие меры", r"мероприяти.*безопасност"]),
-    ("Вредные и опасные производственные факторы", [r"вредн\w+\s+и\s+опасн", r"опасн\w+\s+производственн"]),
-    ("Отдельные указания", [r"отдельн\w+\s+указан"]),
-    ("Системы обеспечения безопасности работ на высоте", [r"систем\w+\s+обеспечения безопасности работ на высоте", r"работы на высоте"]),
-    ("Целевой инструктаж (выдающий)", [r"целев\w+[\s\S]{0,80}инструктаж[\s\S]{0,80}выдающ", r"инструктаж[\s\S]{0,40}выдающ"]),
-    ("Целевой инструктаж (допускающий)", [r"целев\w+[\s\S]{0,80}инструктаж[\s\S]{0,80}допускающ"]),
-    ("Целевой инструктаж (руководитель / производитель)", [r"целев\w+[\s\S]{0,80}инструктаж[\s\S]{0,80}ответственн", r"целев\w+[\s\S]{0,80}инструктаж[\s\S]{0,80}производител"]),
-    ("Инструктаж по охране труда (номера инструкций)", [r"инструктаж по охране труда", r"наименования или номера инструкций", r"объеме инструкций"]),
-    ("Разрешение на подготовку рабочих мест / допуск", [r"разрешение на подготовку", r"разрешаю приступить", r"допуск к выполнению", r"допуск к производству"]),
-    ("Ежедневный допуск / оформление начала работ", [r"ежедневн\w+\s+допуск", r"оформление начала производства", r"оформление ежедневного"]),
-    ("Изменения в составе бригады", [r"изменен.*состав", r"введен в состав", r"выведен из состава"]),
-    ("Продление наряда-допуска", [r"продл"]),
-    ("Закрытие наряда / окончание работ", [r"наряд[-\s]?допуск закрыт", r"работа полностью закончена", r"работы завершены", r"работа выполнена"]),
-    ("Осталось под напряжением / особые условия после подготовки", [r"под напряжением остались", r"рабочие места подготовлены"]),
-    ("Согласование / разрешение эксплуатирующей организации", [r"эксплуатирующ", r"согласован"]),
-    ("Принятие наряда / получил наряд", [r"наряд[-\s]?допуск принял", r"наряд[-\s]?допуск получил", r"наряд получил"]),
-    ("Подписи об ознакомлении с условиями работ", [r"ознакомлен", r"подпись лица, прошедшего инструктаж", r"с условиями"]),
-    ("Два экземпляра наряда", [r"двух экземплярах", r"в двух экземплярах"]),
+# Составляющие наряда: (название, группа, паттерны поиска)
+COMPONENTS = [
+    ("Группа", "Составляющая", "Паттерны"),
 ]
 
-
-def iter_block_items(parent):
-    parent_elm = parent.element.body if isinstance(parent, Doc) else parent._tc
-    for child in parent_elm.iterchildren():
-        if child.tag == qn("w:p"):
-            yield Paragraph(child, parent)
-        elif child.tag == qn("w:tbl"):
-            yield Table(child, parent)
-
+# Реальные составляющие для заполнения
+FIELDS: list[tuple[str, str, list[str]]] = [
+    ("Шапка", "Номер наряда-допуска", [r"наряд[-\s]?допуск\s*[n№n]", r"наряд[-\s]?допуск\s*n\s*[_\.]"]),
+    ("Шапка", "Организация (наименование)", [r"организац", r"наименование организации"]),
+    ("Шапка", "Подразделение", [r"подразделени"]),
+    ("Шапка", "Место / содержание / характеристика работ", [r"поручается", r"наименование работ", r"место производ", r"содержание работ", r"содержание[,\s]*характеристика", r"объем работ", r"необходимые для производства работ"]),
+    ("Сроки", "Дата и время начала работ", [r"начать", r"начало работ", r"начать работ"]),
+    ("Сроки", "Дата и время окончания работ", [r"закончить", r"окончание работ", r"окончить работ"]),
+    ("Сроки", "Срок действия / «действителен до»", [r"действителен до", r"срок действия"]),
+    ("Роли", "Кто выдал наряд (ФИО, должность, подпись)", [r"наряд[-\s]?допуск выдал", r"наряд выдал", r"лицо,?\s*выдавшее"]),
+    ("Роли", "Производитель работ", [r"производител\w*\s+работ", r"производителю работ", r"производителю\s"]),
+    ("Роли", "Ответственный руководитель работ", [r"ответственн\w+\s+руководител", r"руководител\w*\s+работ", r"руководителю работ"]),
+    ("Роли", "Допускающий", [r"допускающ"]),
+    ("Роли", "Наблюдающий", [r"наблюдающ"]),
+    ("Бригада", "Состав бригады / исполнителей", [r"членами бригады", r"состав.*бригад", r"состав исполнител", r"бригадой в составе", r"бригаде в составе"]),
+    ("Бригада", "ФИО членов бригады", [r"фамилия,\s*инициалы", r"фамилия и инициалы", r"фамилия, имя, отчество"]),
+    ("Бригада", "Профессия / должность членов бригады", [r"професси"]),
+    ("Бригада", "Группа по электробезопасности", [r"электробезопасност"]),
+    ("Бригада", "Изменения в составе бригады", [r"изменен[\s\S]{0,40}состав", r"введен в состав", r"выведен из состава"]),
+    ("Меры", "Мероприятия до начала работ / подготовка рабочих мест", [r"подготовк[\s\S]{0,30}рабоч", r"до начала[\s\S]{0,40}мероприят", r"до начала производства", r"мероприяти[\s\S]{0,40}подготов"]),
+    ("Меры", "Мероприятия в процессе работ / меры безопасности", [r"в процессе производства", r"меры безопасности", r"обеспечить следующие меры", r"мероприяти[\s\S]{0,40}безопасност"]),
+    ("Меры", "Вредные и опасные производственные факторы (ВОПФ)", [r"вредн[\s\S]{0,20}опасн", r"опасн[\s\S]{0,20}производственн\w+\s+фактор"]),
+    ("Меры", "Отдельные / особые указания", [r"отдельн\w+\s+указан", r"особые условия"]),
+    ("Меры", "Системы обеспечения безопасности работ на высоте", [r"систем\w+\s+обеспечения безопасности работ на высоте"]),
+    ("Инструктаж", "Целевой инструктаж выдающего наряд", [r"целев[\s\S]{0,80}инструктаж[\s\S]{0,80}выдающ"]),
+    ("Инструктаж", "Целевой инструктаж допускающего", [r"целев[\s\S]{0,80}инструктаж[\s\S]{0,80}допускающ"]),
+    ("Инструктаж", "Целевой инструктаж руководителя / производителя", [r"целев[\s\S]{0,80}инструктаж[\s\S]{0,100}(ответственн|производител|наблюдающ)"]),
+    ("Инструктаж", "Инструктаж по ОТ (номера инструкций) + подписи бригады", [r"инструктаж по охране труда", r"номера инструкций", r"наименования или номера инструкций", r"подпись лица, получившего инструктаж"]),
+    ("Инструктаж", "Подпись об ознакомлении с условиями работ", [r"ознакомлен", r"прошедшего инструктаж", r"с условиями работ"]),
+    ("Допуск", "Разрешение на подготовку РМ / допуск к работам", [r"разрешение на подготовку", r"разрешаю приступить", r"допуск к выполнению", r"допуск к производству", r"допускающий к работе"]),
+    ("Допуск", "Ежедневный допуск / оформление начала и окончания смены", [r"ежедневн[\s\S]{0,20}допуск", r"оформление начала производства", r"оформление ежедневного"]),
+    ("Допуск", "Отметка: рабочие места подготовлены / осталось под напряжением", [r"рабочие места подготовлены", r"под напряжением остались"]),
+    ("Допуск", "Согласование / разрешение эксплуатирующей организации", [r"эксплуатирующ", r"акт-допуск", r"письменное\s+разрешение"]),
+    ("Закрытие", "Принятие наряда / получил наряд", [r"наряд[-\s]?допуск принял", r"наряд[-\s]?допуск получил", r"наряд получил"]),
+    ("Закрытие", "Продление наряда-допуска", [r"продл"]),
+    ("Закрытие", "Закрытие наряда / окончание работ (подписи)", [r"наряд[-\s]?допуск закрыт", r"работа полностью закончена", r"работы завершены", r"работа выполнена"]),
+]
 
 ORDER_NAMES = {
     "903н": "Электроустановки",
@@ -86,60 +81,82 @@ ORDER_NAMES = {
     "721н": "Метрополитен",
     "644н": "Лес / деревообработка",
     "924н": "Теплоснабжение",
-    "922н": "Водолазные работы",
+    "922н": "Водолазные",
     "915н": "Нефтепродукты",
     "849н": "Окрасочные работы",
     "834н": "Химвещества / чистка",
     "781н": "Производство цемента",
 }
 
+YES = "Нужно"
+NO = "Нет"
+YES_FILL = PatternFill("solid", fgColor="C6EFCE")
+NO_FILL = PatternFill("solid", fgColor="F2F2F2")
+YES_FONT = Font(color="006100", bold=True, size=10)
+NO_FONT = Font(color="A0A0A0", size=10)
+HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
+HEADER_FONT = Font(bold=True, color="FFFFFF", size=9)
+GROUP_FILLS = {
+    "Шапка": PatternFill("solid", fgColor="D6EAF8"),
+    "Сроки": PatternFill("solid", fgColor="D5F5E3"),
+    "Роли": PatternFill("solid", fgColor="FCF3CF"),
+    "Бригада": PatternFill("solid", fgColor="FADBD8"),
+    "Меры": PatternFill("solid", fgColor="E8DAEF"),
+    "Инструктаж": PatternFill("solid", fgColor="FDEBD0"),
+    "Допуск": PatternFill("solid", fgColor="D1F2EB"),
+    "Закрытие": PatternFill("solid", fgColor="D5D8DC"),
+}
+THIN = Border(
+    left=Side(style="thin", color="B0B0B0"),
+    right=Side(style="thin", color="B0B0B0"),
+    top=Side(style="thin", color="B0B0B0"),
+    bottom=Side(style="thin", color="B0B0B0"),
+)
 
-def extract_order_meta(text: str) -> tuple[str, str, str]:
-    """Return (topic, order_no, order_date)."""
+
+def iter_block_items(parent):
+    parent_elm = parent.element.body if isinstance(parent, Doc) else parent._tc
+    for child in parent_elm.iterchildren():
+        if child.tag == qn("w:p"):
+            yield Paragraph(child, parent)
+        elif child.tag == qn("w:tbl"):
+            yield Table(child, parent)
+
+
+def present(low: str, patterns: list[str]) -> bool:
+    return any(re.search(p, low, flags=re.I | re.DOTALL) for p in patterns)
+
+
+def extract_meta(text: str) -> tuple[str, str, str]:
     compact = re.sub(r"\s+", " ", text)
-    m = re.search(
-        r"Правилам по охране труда (.+?),?\s*утвержденн",
-        compact,
-        flags=re.I,
-    )
-    topic = m.group(1).strip(" ,") if m else ""
-    topic = re.sub(r"\s+", " ", topic)
-    if len(topic) > 110:
-        topic = topic[:107] + "..."
-
+    m = re.search(r"Правилам по охране труда (.+?),?\s*утвержденн", compact, flags=re.I)
+    topic = re.sub(r"\s+", " ", m.group(1).strip(" ,")) if m else ""
     m_order = re.search(r"(?:N|№)\s*([0-9]+н)", compact, flags=re.I)
     order_no = m_order.group(1) if m_order else ""
-
-    m_date = re.search(
-        r"от\s+(\d{1,2}\s+[а-яё]+\s+\d{4}\s*г\.?)",
-        compact,
-        flags=re.I,
-    )
+    m_date = re.search(r"от\s+(\d{1,2}\s+[а-яё]+\s+\d{4}\s*г\.?)", compact, flags=re.I)
     order_date = m_date.group(1) if m_date else ""
     return topic, order_no, order_date
 
 
-def short_form_name(title: str, topic: str, order_no: str, appendix: str = "") -> str:
+def short_name(title: str, order_no: str) -> str:
     title_l = title.lower()
-    base = ORDER_NAMES.get(order_no)
     if order_no == "922н":
         if "судовых" in title_l:
-            return "Водолазные судовые (922н пр.4)"
+            return "Водолазные судовые (922н)"
         if "наряд-задание" in title_l:
-            return "Водолазные наряд-задание (922н пр.5)"
-        return "Водолазные работы (922н пр.3)"
-    if base:
-        return f"{base} ({order_no})"
-    return (topic[:40] or title[:40]) + (f" ({order_no})" if order_no else "")
+            return "Водолазные наряд-задание (922н)"
+        return "Водолазные работы (922н)"
+    base = ORDER_NAMES.get(order_no, title[:30])
+    return f"{base} ({order_no})" if order_no else base
 
 
 def build_forms(doc: Document) -> list[dict]:
-    blocks: list[tuple[str, str]] = []
+    blocks: list[str] = []
     for block in iter_block_items(doc):
         if isinstance(block, Paragraph):
             t = block.text.strip()
             if t:
-                blocks.append(("p", t))
+                blocks.append(t)
         else:
             cells = []
             for row in block.rows:
@@ -148,43 +165,32 @@ def build_forms(doc: Document) -> list[dict]:
                     if ct:
                         cells.append(ct)
             if cells:
-                blocks.append(("t", "\n".join(cells)))
+                blocks.append("\n".join(cells))
 
-    starts = [i for i, (k, t) in enumerate(blocks) if k == "p" and re.match(r"^Приложение", t)]
+    starts = [i for i, t in enumerate(blocks) if t.startswith("Приложение")]
     forms = []
     for si, start in enumerate(starts):
         end = starts[si + 1] if si + 1 < len(starts) else len(blocks)
         chunk = blocks[start:end]
-        full_text = "\n".join(t for _, t in chunk)
-        low = full_text.lower()
-
-        appendix = chunk[0][1]
-        topic, order_no, order_date = extract_order_meta(appendix)
-
-        title = ""
-        for kind, text in chunk[:12]:
-            if re.search(r"НАРЯД|Наряд-допуск|Наряд-задание", text):
-                title = re.sub(r"\s+", " ", text)
-                break
-        if not title:
-            title = "Наряд-допуск"
-
-        name = short_form_name(title, topic, order_no, appendix)
+        full = "\n".join(chunk)
+        appendix = chunk[0]
+        topic, order_no, order_date = extract_meta(appendix)
+        title = next(
+            (re.sub(r"\s+", " ", t) for t in chunk[:12] if re.search(r"НАРЯД|Наряд-допуск|Наряд-задание", t)),
+            "Наряд-допуск",
+        )
         forms.append(
             {
                 "idx": si + 1,
-                "name": name,
-                "title": title[:120],
+                "name": short_name(title, order_no),
+                "title": title[:140],
                 "topic": topic,
                 "order_no": order_no,
                 "order_date": order_date,
-                "appendix": re.sub(r"\s+", " ", appendix)[:220],
-                "text": full_text,
-                "low": low,
+                "low": full.lower(),
             }
         )
 
-    # Disambiguate identical short names
     counts: dict[str, int] = {}
     for f in forms:
         counts[f["name"]] = counts.get(f["name"], 0) + 1
@@ -196,210 +202,205 @@ def build_forms(doc: Document) -> list[dict]:
     return forms
 
 
-def field_present(low: str, patterns: list[str]) -> bool:
-    # DOTALL: в бланках формулировки часто разорваны переносами строк
-    return any(re.search(p, low, flags=re.I | re.DOTALL) for p in patterns)
-
-
-def style_header(cell, fill_color="1F4E79"):
-    cell.fill = PatternFill("solid", fgColor=fill_color)
-    cell.font = Font(bold=True, color="FFFFFF", size=10)
+def style_header(cell):
+    cell.fill = HEADER_FILL
+    cell.font = HEADER_FONT
     cell.alignment = Alignment(wrap_text=True, horizontal="center", vertical="center")
-
-
-def autosize(ws, max_width=42):
-    for col in ws.columns:
-        letter = get_column_letter(col[0].column)
-        width = 10
-        for cell in col:
-            if cell.value:
-                width = max(width, min(len(str(cell.value)) + 2, max_width))
-        ws.column_dimensions[letter].width = width
+    cell.border = THIN
 
 
 def main():
-    doc = Document(str(INPUT))
-    forms = build_forms(doc)
+    forms = build_forms(Document(str(INPUT)))
 
-    # Presence matrix
-    matrix = []
-    for field_name, patterns in FIELDS:
-        row = {"field": field_name}
+    # matrix: field -> form -> YES/NO
+    matrix: list[dict] = []
+    for group, field, patterns in FIELDS:
+        row = {"group": group, "field": field}
         for f in forms:
-            row[f["name"]] = "Да" if field_present(f["low"], patterns) else "—"
+            row[f["name"]] = YES if present(f["low"], patterns) else NO
         matrix.append(row)
 
-    # Count presence per form
     for f in forms:
-        f["fields_count"] = sum(1 for r in matrix if r[f["name"]] == "Да")
-        f["fields_total"] = len(FIELDS)
+        f["need_count"] = sum(1 for r in matrix if r[f["name"]] == YES)
 
     wb = Workbook()
 
-    # --- Sheet 1: comparison matrix ---
+    # ========== 1. Главный лист: составляющая × наряд ==========
     ws = wb.active
-    ws.title = "Сравнение состава данных"
-    thin = Border(
-        left=Side(style="thin", color="B0B0B0"),
-        right=Side(style="thin", color="B0B0B0"),
-        top=Side(style="thin", color="B0B0B0"),
-        bottom=Side(style="thin", color="B0B0B0"),
-    )
-
-    headers = ["Поле / блок данных"] + [f["name"] for f in forms] + ["В скольких формах"]
+    ws.title = "Что указывать (матрица)"
+    headers = ["Группа", "Составляющая наряда"] + [f["name"] for f in forms] + ["В скольких нарядах нужно"]
     for col, h in enumerate(headers, 1):
-        cell = ws.cell(1, col, h)
-        style_header(cell)
-    ws.row_dimensions[1].height = 55
-    ws.freeze_panes = "B2"
-
-    yes_fill = PatternFill("solid", fgColor="C6EFCE")
-    no_fill = PatternFill("solid", fgColor="F2F2F2")
-    yes_font = Font(color="006100", bold=True)
-    no_font = Font(color="808080")
+        style_header(ws.cell(1, col, h))
+    ws.row_dimensions[1].height = 70
+    ws.freeze_panes = "C2"
 
     for ri, row in enumerate(matrix, 2):
-        cell = ws.cell(ri, 1, row["field"])
-        cell.alignment = Alignment(wrap_text=True, vertical="center")
-        cell.border = thin
-        yes_count = 0
-        for ci, f in enumerate(forms, 2):
-            val = row[f["name"]]
+        g = ws.cell(ri, 1, row["group"])
+        g.fill = GROUP_FILLS.get(row["group"], PatternFill())
+        g.alignment = Alignment(vertical="center", horizontal="center")
+        g.border = THIN
+        g.font = Font(bold=True, size=9)
+
+        fcell = ws.cell(ri, 2, row["field"])
+        fcell.alignment = Alignment(wrap_text=True, vertical="center")
+        fcell.border = THIN
+        fcell.fill = GROUP_FILLS.get(row["group"], PatternFill())
+
+        need_n = 0
+        for ci, form in enumerate(forms, 3):
+            val = row[form["name"]]
             c = ws.cell(ri, ci, val)
             c.alignment = Alignment(horizontal="center", vertical="center")
-            c.border = thin
-            if val == "Да":
-                c.fill = yes_fill
-                c.font = yes_font
-                yes_count += 1
+            c.border = THIN
+            if val == YES:
+                c.fill = YES_FILL
+                c.font = YES_FONT
+                need_n += 1
             else:
-                c.fill = no_fill
-                c.font = no_font
-        c = ws.cell(ri, len(forms) + 2, yes_count)
-        c.alignment = Alignment(horizontal="center", vertical="center")
-        c.border = thin
-        c.font = Font(bold=True)
+                c.fill = NO_FILL
+                c.font = NO_FONT
+        total = ws.cell(ri, len(forms) + 3, need_n)
+        total.alignment = Alignment(horizontal="center", vertical="center")
+        total.font = Font(bold=True)
+        total.border = THIN
 
-    # totals row
-    total_row = len(matrix) + 2
-    ws.cell(total_row, 1, "Итого полей (из списка)").font = Font(bold=True)
-    for ci, f in enumerate(forms, 2):
-        c = ws.cell(total_row, ci, f["fields_count"])
+    # totals
+    tr = len(matrix) + 2
+    ws.cell(tr, 1, "").border = THIN
+    ws.cell(tr, 2, "Сколько составляющих нужно заполнять").font = Font(bold=True)
+    ws.cell(tr, 2).border = THIN
+    for ci, form in enumerate(forms, 3):
+        c = ws.cell(tr, ci, form["need_count"])
         c.font = Font(bold=True)
         c.alignment = Alignment(horizontal="center")
         c.fill = PatternFill("solid", fgColor="DDEBF7")
+        c.border = THIN
 
-    ws.column_dimensions["A"].width = 48
-    for i in range(2, len(forms) + 3):
-        ws.column_dimensions[get_column_letter(i)].width = 14
+    ws.column_dimensions["A"].width = 12
+    ws.column_dimensions["B"].width = 48
+    for i in range(3, len(forms) + 4):
+        ws.column_dimensions[get_column_letter(i)].width = 13
 
-    # --- Sheet 2: registry ---
-    ws2 = wb.create_sheet("Реестр форм", 0)
-    reg_headers = [
-        "№",
-        "Краткое название",
-        "Полное название формы",
-        "Область ПОТ",
-        "Приказ",
-        "Дата приказа",
-        "Источник (приложение)",
-        "Полей из списка",
-        "% покрытия списка",
-    ]
-    for col, h in enumerate(reg_headers, 1):
+    # ========== 2. По составляющей: где нужно / где нет ==========
+    ws2 = wb.create_sheet("По составляющей")
+    for col, h in enumerate(
+        ["Группа", "Составляющая", "Нужно указывать (наряды)", "Не нужно (наряды)", "Нужно, шт.", "Нет, шт."],
+        1,
+    ):
         style_header(ws2.cell(1, col, h))
-    for ri, f in enumerate(forms, 2):
-        pct = round(100 * f["fields_count"] / f["fields_total"], 1)
+    ws2.row_dimensions[1].height = 30
+    ws2.freeze_panes = "A2"
+
+    for ri, row in enumerate(matrix, 2):
+        need = [f["name"] for f in forms if row[f["name"]] == YES]
+        skip = [f["name"] for f in forms if row[f["name"]] == NO]
         values = [
-            f["idx"],
-            f["name"],
-            f["title"],
-            f["topic"],
-            f["order_no"],
-            f["order_date"],
-            f["appendix"],
-            f["fields_count"],
-            pct,
+            row["group"],
+            row["field"],
+            "; ".join(need) if need else "—",
+            "; ".join(skip) if skip else "—",
+            len(need),
+            len(skip),
         ]
         for ci, v in enumerate(values, 1):
-            cell = ws2.cell(ri, ci, v)
-            cell.alignment = Alignment(wrap_text=True, vertical="center")
-            cell.border = thin
-    ws2.freeze_panes = "A2"
-    ws2.column_dimensions["A"].width = 5
-    ws2.column_dimensions["B"].width = 34
-    ws2.column_dimensions["C"].width = 40
-    ws2.column_dimensions["D"].width = 40
-    ws2.column_dimensions["E"].width = 10
-    ws2.column_dimensions["F"].width = 22
-    ws2.column_dimensions["G"].width = 55
-    ws2.column_dimensions["H"].width = 14
-    ws2.column_dimensions["I"].width = 14
+            c = ws2.cell(ri, ci, v)
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+            c.border = THIN
+            if ci == 1:
+                c.fill = GROUP_FILLS.get(row["group"], PatternFill())
+                c.font = Font(bold=True, size=9)
+            if ci == 3 and need:
+                c.fill = YES_FILL
+            if ci == 4 and skip:
+                c.fill = NO_FILL
+        ws2.row_dimensions[ri].height = max(30, 15 * (1 + max(len(need), len(skip)) // 3))
 
-    # --- Sheet 3: summary by field frequency ---
-    ws3 = wb.create_sheet("Частота полей")
-    style_header(ws3.cell(1, 1, "Поле / блок данных"))
-    style_header(ws3.cell(1, 2, "Есть в формах"))
-    style_header(ws3.cell(1, 3, "% форм"))
-    style_header(ws3.cell(1, 4, "Категория распространённости"))
-    freq_rows = []
-    for row in matrix:
-        cnt = sum(1 for f in forms if row[f["name"]] == "Да")
-        pct = round(100 * cnt / len(forms), 1)
-        if pct >= 80:
-            cat = "Общее почти для всех"
-        elif pct >= 50:
-            cat = "Частое"
-        elif pct >= 20:
-            cat = "Частичное"
-        else:
-            cat = "Редкое / специфичное"
-        freq_rows.append((row["field"], cnt, pct, cat))
-    freq_rows.sort(key=lambda x: (-x[2], x[0]))
-    for ri, (field, cnt, pct, cat) in enumerate(freq_rows, 2):
-        ws3.cell(ri, 1, field).alignment = Alignment(wrap_text=True)
-        ws3.cell(ri, 2, cnt).alignment = Alignment(horizontal="center")
-        ws3.cell(ri, 3, pct).alignment = Alignment(horizontal="center")
-        c = ws3.cell(ri, 4, cat)
-        if cat.startswith("Общее"):
-            c.fill = PatternFill("solid", fgColor="C6EFCE")
-        elif cat == "Частое":
-            c.fill = PatternFill("solid", fgColor="FFF2CC")
-        elif cat == "Частичное":
-            c.fill = PatternFill("solid", fgColor="FCE4D6")
-        else:
-            c.fill = PatternFill("solid", fgColor="F2F2F2")
-    ws3.column_dimensions["A"].width = 55
-    ws3.column_dimensions["B"].width = 14
-    ws3.column_dimensions["C"].width = 10
-    ws3.column_dimensions["D"].width = 28
+    ws2.column_dimensions["A"].width = 12
+    ws2.column_dimensions["B"].width = 45
+    ws2.column_dimensions["C"].width = 55
+    ws2.column_dimensions["D"].width = 55
+    ws2.column_dimensions["E"].width = 12
+    ws2.column_dimensions["F"].width = 10
 
-    # --- Sheet 4: notes ---
-    ws4 = wb.create_sheet("Пояснения")
+    # ========== 3. Чек-лист по каждому наряду ==========
+    ws3 = wb.create_sheet("Чек-лист по наряду")
+    style_header(ws3.cell(1, 1, "Наряд-допуск"))
+    style_header(ws3.cell(1, 2, "Приказ"))
+    style_header(ws3.cell(1, 3, "Что НУЖНО указывать"))
+    style_header(ws3.cell(1, 4, "Чего НЕТ в бланке"))
+    style_header(ws3.cell(1, 5, "Нужно, шт."))
+    ws3.row_dimensions[1].height = 30
+    ws3.freeze_panes = "A2"
+
+    for ri, form in enumerate(forms, 2):
+        need = [r["field"] for r in matrix if r[form["name"]] == YES]
+        skip = [r["field"] for r in matrix if r[form["name"]] == NO]
+        ws3.cell(ri, 1, form["name"]).alignment = Alignment(wrap_text=True, vertical="top")
+        ws3.cell(ri, 2, form["order_no"]).alignment = Alignment(horizontal="center", vertical="top")
+        c3 = ws3.cell(ri, 3, "\n".join(f"• {x}" for x in need))
+        c3.alignment = Alignment(wrap_text=True, vertical="top")
+        c3.fill = YES_FILL
+        c4 = ws3.cell(ri, 4, "\n".join(f"• {x}" for x in skip))
+        c4.alignment = Alignment(wrap_text=True, vertical="top")
+        c4.fill = NO_FILL
+        ws3.cell(ri, 5, len(need)).alignment = Alignment(horizontal="center", vertical="top")
+        for ci in range(1, 6):
+            ws3.cell(ri, ci).border = THIN
+        ws3.row_dimensions[ri].height = max(60, 12 * max(len(need), len(skip), 4))
+
+    ws3.column_dimensions["A"].width = 32
+    ws3.column_dimensions["B"].width = 10
+    ws3.column_dimensions["C"].width = 55
+    ws3.column_dimensions["D"].width = 55
+    ws3.column_dimensions["E"].width = 12
+
+    # ========== 4. Реестр ==========
+    ws4 = wb.create_sheet("Реестр нарядов", 0)
+    for col, h in enumerate(
+        ["№", "Наряд-допуск", "Область ПОТ", "Приказ", "Дата", "Составляющих нужно указать"],
+        1,
+    ):
+        style_header(ws4.cell(1, col, h))
+    for ri, f in enumerate(forms, 2):
+        for ci, v in enumerate(
+            [f["idx"], f["name"], f["topic"], f["order_no"], f["order_date"], f["need_count"]],
+            1,
+        ):
+            c = ws4.cell(ri, ci, v)
+            c.alignment = Alignment(wrap_text=True, vertical="center")
+            c.border = THIN
+    ws4.column_dimensions["A"].width = 5
+    ws4.column_dimensions["B"].width = 36
+    ws4.column_dimensions["C"].width = 50
+    ws4.column_dimensions["D"].width = 10
+    ws4.column_dimensions["E"].width = 22
+    ws4.column_dimensions["F"].width = 18
+
+    # ========== 5. Пояснения ==========
+    ws5 = wb.create_sheet("Как читать")
+    ws5["A1"] = "Как читать таблицу"
+    ws5["A1"].font = Font(bold=True, size=14)
     notes = [
-        "Источник: файл «Наряд-допуск.docx» — сборник рекомендуемых образцов нарядов-допусков из ПОТ Минтруда РФ (2020).",
-        f"Всего форм в файле: {len(forms)}.",
-        "Сравнение сделано по унифицированному списку блоков данных (не посимвольное сравнение бланков).",
-        "«Да» — блок явно присутствует в тексте/таблицах формы; «—» — не найден по типовым формулировкам.",
-        "Формы ЖКХ #1 и #2 — два почти идентичных приложения из приказа 758н (как в исходном файле).",
-        "Приложение 4 к 922н (судовые водолазные) в файле почти пустое (только заголовок) — покрытие низкое.",
-        "У электроустановок (903н) и работ на высоте (782н) — наиболее «богатый» состав данных (целевые инструктажи, спец. блоки).",
-        "Лист «Реестр форм» — перечень с реквизитами приказов.",
-        "Лист «Сравнение состава данных» — матрица присутствия полей.",
-        "Лист «Частота полей» — какие блоки общие, а какие специфичны.",
+        "Зелёное «Нужно» — в бланке этого наряда-допуска есть поле/блок, куда это указывают.",
+        "Серое «Нет» — в бланке такого поля нет (указывать не требуется по форме).",
+        "Лист «Что указывать (матрица)» — быстрый обзор: строка = составляющая, столбец = наряд.",
+        "Лист «По составляющей» — для каждой составляющей списки нарядов «нужно» и «не нужно».",
+        "Лист «Чек-лист по наряду» — для каждого наряда: что заполнять и чего в бланке нет.",
+        "Сравнение по рекомендуемым образцам из ПОТ Минтруда (файл Наряд-допуск.docx), 27 форм.",
+        "ЖКХ #1 и #2 — два почти одинаковых бланка из приказа 758н (как в исходном файле).",
+        "Водолазные судовые (922н) в файле почти пустые (только заголовок) — у них мало «Нужно».",
     ]
-    ws4["A1"] = "Пояснения к сравнению"
-    ws4["A1"].font = Font(bold=True, size=14)
-    for i, note in enumerate(notes, 3):
-        ws4.cell(i, 1, f"• {note}")
-        ws4.cell(i, 1).alignment = Alignment(wrap_text=True)
-    ws4.column_dimensions["A"].width = 120
+    for i, n in enumerate(notes, 3):
+        ws5.cell(i, 1, f"• {n}").alignment = Alignment(wrap_text=True)
+    ws5.column_dimensions["A"].width = 120
 
     wb.save(OUTPUT)
-    print(f"Saved: {OUTPUT}")
-    print(f"Forms: {len(forms)}")
-    for f in forms:
-        print(f"  {f['idx']:2}. {f['name']}: {f['fields_count']}/{f['fields_total']}")
+    print(f"Saved {OUTPUT}")
+    print(f"Forms: {len(forms)}, components: {len(FIELDS)}")
+    rare = [r for r in matrix if sum(1 for f in forms if r[f["name"]] == YES) <= 3]
+    common = [r for r in matrix if sum(1 for f in forms if r[f["name"]] == YES) >= 24]
+    print("Common (>=24):", [r["field"] for r in common])
+    print("Rare (<=3):", [r["field"] for r in rare])
 
 
 if __name__ == "__main__":
