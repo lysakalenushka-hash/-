@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Сравнение нарядов-допусков: составляющие слово в слово из бланков."""
+"""Сравнение нарядов: структура 1-го файла + дословный текст в зелёных ячейках из 2-го."""
 
 from __future__ import annotations
 
@@ -17,6 +17,182 @@ from openpyxl.utils import get_column_letter
 
 INPUT = Path("/home/ubuntu/.cursor/projects/workspace/uploads/_____-_______629d.docx")
 OUTPUT = Path("/workspace/Сравнение_нарядов-допусков.xlsx")
+
+# Колонки «Группа» + «Составляющая наряда» — как в первом файле.
+# Для каждой составляющей: паттерны, которыми достаём ДОСЛОВНЫЙ фрагмент в зелёную ячейку.
+FIELDS: list[tuple[str, str, list[str]]] = [
+    ("Шапка", "Номер наряда-допуска", [
+        r"НАРЯД[-\s]?ДОПУСК\s*[N№n]?\s*[_.…—\-]*",
+        r"Наряд-допуск\s*[N№n]?\s*[_.…—\-]*",
+    ]),
+    ("Шапка", "Организация (наименование)", [
+        r"Организация\s*[:_]*",
+        r"\(наименование организации\)",
+    ]),
+    ("Шапка", "Подразделение", [r"Подразделение\s*[:_]*"]),
+    ("Шапка", "Место / содержание / характеристика работ", [
+        r"поручается",
+        r"2\.\s*Наименование работ",
+        r"\(наименование работ, место, условия их выполнения\)",
+        r"Содержание работ",
+        r"Место выполнения работ",
+        r"\(содержание, характеристика, место производства и объем работ\)",
+        r"необходимые для производства работ",
+    ]),
+    ("Сроки", "Дата и время начала работ", [
+        r"Работу начать:\s*дата",
+        r"Начало работ",
+        r"1\.3\.\s*Начать работы",
+        r"Начать работы",
+    ]),
+    ("Сроки", "Дата и время окончания работ", [
+        r"Работу закончить:\s*дата",
+        r"Окончание работ",
+        r"1\.4\.\s*Окончить работы",
+        r"Окончить работы",
+    ]),
+    ("Сроки", "Срок действия / «действителен до»", [
+        r"Действителен до",
+        r"Срок действия наряда",
+        r"Выдан\s*[\"«]?",
+    ]),
+    ("Роли", "Кто выдал наряд (ФИО, должность, подпись)", [
+        r"Наряд-допуск выдал",
+        r"Наряд выдал",
+        r"1\.5\.\s*Наряд выдал",
+        r"7\.\s*Наряд-допуск выдал",
+        r"Лицо, выдавшее наряд-допуск",
+    ]),
+    ("Роли", "Производитель работ", [
+        r"Производителю\s*работ",
+        r"1\.1\.\s*Производителю работ",
+        r"Ответственному\s*исполнителю \(производителю\) работ",
+        r"Производитель работ",
+    ]),
+    ("Роли", "Ответственный руководитель работ", [
+        r"Ответственному руководителю\s*работ",
+        r"Ответственному\s*руководителю работ",
+        r"1\.\s*Руководителю работ",
+        r"Руководитель работ",
+    ]),
+    ("Роли", "Допускающий", [
+        r"допускающему",
+        r"Допускающий к работе",
+        r"Допускающий",
+    ]),
+    ("Роли", "Наблюдающий", [r"наблюдающему", r"наблюдающий"]),
+    ("Бригада", "Состав бригады / исполнителей", [
+        r"с членами бригады",
+        r"Состав исполнителей работ",
+        r"с бригадой в составе",
+        r"6\.\s*Состав исполнителей работ",
+    ]),
+    ("Бригада", "ФИО членов бригады", [
+        r"Фамилия, имя, отчество \(при наличии\)",
+        r"Фамилия, инициалы",
+        r"фамилия, инициалы, группа по электробезопасности",
+    ]),
+    ("Бригада", "Профессия / должность членов бригады", [
+        r"Профессия \(должность\), квалификация, группа по электробезопасности",
+        r"Профессия \(должность\)",
+        r"Профессия",
+    ]),
+    ("Бригада", "Группа по электробезопасности", [
+        r"фамилия,\s*инициалы,\s*группа\s*по\s*электробезопасности",
+        r"Профессия \(должность\), квалификация, группа по электробезопасности",
+        r"\(фамилия, инициалы, группа по электробезопасности\)",
+        r"группа по электробезопасности",
+    ]),
+    ("Бригада", "Изменения в составе бригады", [
+        r"Изменения в составе бригады",
+        r"Изменения в составе исполнителей работ",
+        r"Введен в состав бригады",
+        r"Введен в состав исполнителей работ",
+    ]),
+    ("Меры", "Мероприятия до начала работ / подготовка рабочих мест", [
+        r"Мероприятия по подготовке рабочих мест к выполнению работ",
+        r"До\s+начала\s+производства\s+работ\s+необходимо\s+выполнить\s+следующие\s+мероприятия",
+        r"До начала работ следует выполнить следующие мероприятия",
+        r"При\s+подготовке\s+и\s+производстве\s+работ\s+обеспечить\s+следующие\s+меры\s+безопасности",
+        r"1\.2\.\s*При\s+подготовке",
+    ]),
+    ("Меры", "Мероприятия в процессе работ / меры безопасности", [
+        r"В\s+процессе\s+производства\s+работ\s+необходимо\s+выполнить\s+следующие\s+мероприятия",
+        r"Наименование мероприятия по безопасности работ на высоте",
+    ]),
+    ("Меры", "Вредные и опасные производственные факторы (ВОПФ)", [
+        r"Вредные\s+и\s+опасные\s+производственные\s+факторы",
+        r"Опасные и вредные производственные",
+    ]),
+    ("Меры", "Отдельные / особые указания", [
+        r"Отдельные указания",
+        r"Особые условия проведения работ",
+    ]),
+    ("Меры", "Системы обеспечения безопасности работ на высоте", [
+        r"Системы обеспечения безопасности работ на высоте",
+    ]),
+    ("Инструктаж", "Целевой инструктаж выдающего наряд", [
+        r"Регистрация целевого инструктажа, проводимого выдающим наряд-допуск",
+        r"Регистрация целевого инструктажа,\s*проводимого выдающим наряд-допуск",
+    ]),
+    ("Инструктаж", "Целевой инструктаж допускающего", [
+        r"Регистрация целевого инструктажа,[\s\n]*проводимого допускающим при первичном допуске",
+    ]),
+    ("Инструктаж", "Целевой инструктаж руководителя / производителя", [
+        r"Регистрация целевого инструктажа,[\s\n]*проводимого ответственным руководителем работ",
+        r"Регистрация целевого инструктажа при первичном допуске",
+    ]),
+    ("Инструктаж", "Инструктаж по ОТ (номера инструкций) + подписи бригады", [
+        r"Инструктаж по охране труда в объеме инструкций",
+        r"Подпись лица, получившего инструктаж",
+        r"\(указать наименования или номера инструкций",
+    ]),
+    ("Инструктаж", "Подпись об ознакомлении с условиями работ", [
+        r"Подпись\s+лица, прошедшего\s+инструктаж\s+и\s+ознакомившегося с условиями",
+        r"С условиями работ ознакомлен",
+        r"с условиями работ ознакомлен",
+        r"С условиями производства работ ознакомлен",
+        r"С условиями работы ознакомлен",
+    ]),
+    ("Допуск", "Разрешение на подготовку РМ / допуск к работам", [
+        r"Разрешение на подготовку рабочих мест и на допуск к выполнению работ",
+        r"Разрешаю приступить к выполнению работ",
+        r"Разрешаю приступить\s*к выполнению работ",
+    ]),
+    ("Допуск", "Ежедневный допуск / оформление начала и окончания смены", [
+        r"Ежедневный допуск к работе и время ее окончания",
+        r"Оформление ежедневного допуска к производству работ",
+        r"Оформление начала производства работ",
+    ]),
+    ("Допуск", "Отметка: рабочие места подготовлены / осталось под напряжением", [
+        r"Рабочие места подготовлены\.\s*Под напряжением остались",
+        r"Рабочие места подготовлены\.",
+    ]),
+    ("Допуск", "Согласование / разрешение эксплуатирующей организации", [
+        r"Письменное\s+разрешение\s+эксплуатирующей\s+организации",
+        r"Письменное\s+разрешение\s+\(акт-допуск\)\s+действующего\s+предприятия",
+        r"Мероприятия по обеспечению безопасности строительного производства\s+согласованы",
+    ]),
+    ("Закрытие", "Принятие наряда / получил наряд", [
+        r"Наряд-допуск принял",
+        r"наряд-допуск получил",
+        r"С условиями производства работ ознакомлен, наряд-допуск получил",
+        r"С условиями работы ознакомлен, наряд-допуск получил",
+        r"С условиями работ ознакомлен и наряд-допуск получил",
+    ]),
+    ("Закрытие", "Продление наряда-допуска", [
+        r"Наряд-допуск продлил",
+        r"Наряд продлил",
+        r"Наряд-допуск продлен",
+        r"Наряд допуск продлен",
+    ]),
+    ("Закрытие", "Закрытие наряда / окончание работ (подписи)", [
+        r"Наряд-допуск закрыт",
+        r"Работа полностью закончена, бригада удалена",
+        r"Работа\s+выполнена\s+в\s+полном\s+объеме",
+        r"Работы\s+завершены,\s+рабочие\s+места\s+убраны",
+    ]),
+]
 
 ORDER_NAMES = {
     "903н": "Электроустановки",
@@ -45,161 +221,23 @@ ORDER_NAMES = {
     "781н": "Производство цемента",
 }
 
-# Сравнительные позиции: для каждой — список regex, которыми ищем ДОСЛОВНЫЙ фрагмент в бланке.
-# В ячейку попадает найденный текст из документа (не моя формулировка).
-COMPARE_SLOTS: list[tuple[str, list[str]]] = [
-    ("Номер наряда-допуска", [r"НАРЯД[-\s]?ДОПУСК\s*[N№n]?\s*[_.…—\-]*", r"Наряд-допуск\s*[N№n]?\s*[_.…—\-]*"]),
-    ("Организация", [r"Организация\s*[:_]*.{0,40}", r"\(наименование организации\)"]),
-    ("Подразделение", [r"Подразделение\s*[:_]*.{0,40}"]),
-    ("Ответственный руководитель работ", [
-        r"Ответственному руководителю\s*работ",
-        r"Ответственному\s*руководителю работ",
-        r"1\.\s*Руководителю работ",
-        r"Руководитель работ",
-        r"Ответственному\s*руководителю работ:",
-    ]),
-    ("Производитель / ответственный исполнитель работ", [
-        r"Производителю\s*работ",
-        r"1\.1\.\s*Производителю работ",
-        r"Ответственному\s*исполнителю \(производителю\) работ",
-        r"Производитель работ",
-    ]),
-    ("Допускающий", [r"допускающему", r"Допускающий", r"Допускающий к работе"]),
-    ("Наблюдающий", [r"наблюдающему", r"наблюдающему", r"наблюдающий"]),
-    ("Члены бригады / состав исполнителей", [
-        r"с членами бригады",
-        r"Состав исполнителей работ",
-        r"с бригадой в составе",
-        r"6\.\s*Состав исполнителей работ",
-    ]),
-    ("Группа по электробезопасности (дословно)", [
-        r"фамилия,\s*инициалы,\s*группа\s*по\s*электробезопасности",
-        r"Профессия \(должность\), квалификация, группа по электробезопасности",
-        r"\(фамилия, инициалы, группа по электробезопасности\)",
-    ]),
-    ("Поручается / наименование / содержание работ", [
-        r"поручается",
-        r"2\.\s*Наименование работ",
-        r"\(наименование работ, место, условия их выполнения\)",
-        r"Наименование работ",
-        r"Содержание работ",
-        r"поручается произвести следующие работы",
-        r"\(содержание, характеристика, место производства и объем работ\)",
-    ]),
-    ("Место выполнения работ", [r"Место выполнения работ", r"место производства"]),
-    ("Начало работ (дата/время)", [
-        r"Работу начать:\s*дата",
-        r"Начало работ",
-        r"1\.3\.\s*Начать работы",
-        r"Начать работы",
-    ]),
-    ("Окончание работ (дата/время)", [
-        r"Работу закончить:\s*дата",
-        r"Окончание работ",
-        r"1\.4\.\s*Окончить работы",
-        r"Окончить работы",
-    ]),
-    ("Срок действия / выдан / действителен до", [
-        r"Выдан\s*[\"«]?",
-        r"Действителен до",
-        r"Срок действия наряда",
-    ]),
-    ("Вредные и опасные производственные факторы", [
-        r"Вредные\s+и\s+опасные\s+производственные\s+факторы",
-        r"Опасные и вредные производственные",
-        r"вредные и опасные производственные факторы",
-    ]),
-    ("Мероприятия по подготовке рабочих мест / до начала работ", [
-        r"Мероприятия по подготовке рабочих мест к выполнению работ",
-        r"До\s+начала\s+производства\s+работ\s+необходимо\s+выполнить\s+следующие\s+мероприятия",
-        r"До начала работ следует выполнить следующие мероприятия",
-        r"При\s+подготовке\s+и\s+производстве\s+работ\s+обеспечить\s+следующие\s+меры\s+безопасности",
-        r"1\.2\.\s*При\s+подготовке",
-    ]),
-    ("Мероприятия в процессе производства работ", [
-        r"В\s+процессе\s+производства\s+работ\s+необходимо\s+выполнить\s+следующие\s+мероприятия",
-        r"Наименование мероприятия по безопасности работ на высоте",
-    ]),
-    ("Отдельные указания / особые условия", [
-        r"Отдельные указания",
-        r"Особые условия проведения работ",
-    ]),
-    ("Системы обеспечения безопасности работ на высоте", [
-        r"Системы обеспечения безопасности работ на высоте",
-    ]),
-    ("Наряд-допуск выдал / Наряд выдал", [
-        r"Наряд-допуск выдал",
-        r"Наряд выдал",
-        r"1\.5\.\s*Наряд выдал",
-        r"7\.\s*Наряд-допуск выдал",
-    ]),
-    ("Наряд-допуск принял / получил", [
-        r"Наряд-допуск принял",
-        r"наряд-допуск получил",
-        r"С условиями производства работ ознакомлен, наряд-допуск получил",
-        r"С условиями работы ознакомлен, наряд-допуск получил",
-        r"С условиями работ ознакомлен и наряд-допуск получил",
-    ]),
-    ("Наряд-допуск продлил / продлен", [
-        r"Наряд-допуск продлил",
-        r"Наряд продлил",
-        r"Наряд-допуск продлен",
-        r"Наряд допуск продлен",
-    ]),
-    ("Регистрация целевого инструктажа, проводимого выдающим наряд-допуск", [
-        r"Регистрация целевого инструктажа,\s*проводимого выдающим наряд-допуск",
-        r"Регистрация целевого инструктажа, проводимого выдающим наряд-допуск",
-    ]),
-    ("Регистрация целевого инструктажа, проводимого допускающим при первичном допуске", [
-        r"Регистрация целевого инструктажа,[\s\n]*проводимого допускающим при первичном допуске",
-    ]),
-    ("Регистрация целевого инструктажа, проводимого ответственным руководителем работ", [
-        r"Регистрация целевого инструктажа,[\s\n]*проводимого ответственным руководителем работ",
-        r"Регистрация целевого инструктажа при первичном допуске",
-    ]),
-    ("Инструктаж по охране труда (номера инструкций) / таблица подписей бригады", [
-        r"Инструктаж по охране труда в объеме инструкций",
-        r"Подпись лица, получившего инструктаж",
-        r"\(указать наименования или номера инструкций",
-    ]),
-    ("Разрешение на подготовку рабочих мест и на допуск к выполнению работ", [
-        r"Разрешение на подготовку рабочих мест и на допуск к выполнению работ",
-        r"Разрешаю приступить к выполнению работ",
-        r"Разрешаю приступить\s*к выполнению работ",
-        r"2\.2\.\s*Мероприятия,\s*обеспечивающие\s*безопасность\s*работ",
-    ]),
-    ("Рабочие места подготовлены. Под напряжением остались", [
-        r"Рабочие места подготовлены\.\s*Под напряжением остались",
-        r"Рабочие места подготовлены\.",
-    ]),
-    ("Ежедневный допуск к работе и время ее окончания", [
-        r"Ежедневный допуск к работе и время ее окончания",
-        r"Оформление ежедневного допуска к производству работ",
-        r"Оформление начала производства работ",
-    ]),
-    ("Изменения в составе бригады / исполнителей", [
-        r"Изменения в составе бригады",
-        r"Изменения в составе исполнителей работ",
-        r"Введен в состав бригады",
-        r"Введен в состав исполнителей работ",
-    ]),
-    ("Письменное разрешение эксплуатирующей организации / согласование", [
-        r"Письменное\s+разрешение\s+эксплуатирующей\s+организации",
-        r"Письменное\s+разрешение\s+\(акт-допуск\)\s+действующего\s+предприятия",
-        r"Мероприятия по обеспечению безопасности строительного производства\s+согласованы",
-    ]),
-    ("Закрытие наряда-допуска", [
-        r"Наряд-допуск закрыт",
-        r"Работа полностью закончена, бригада удалена",
-        r"Работа\s+выполнена\s+в\s+полном\s+объеме",
-        r"Работы\s+завершены,\s+рабочие\s+места\s+убраны",
-    ]),
-]
-
+NO = "Нет"
 YES_FILL = PatternFill("solid", fgColor="C6EFCE")
 NO_FILL = PatternFill("solid", fgColor="F2F2F2")
+YES_FONT = Font(color="006100", size=8)
+NO_FONT = Font(color="A0A0A0", size=9)
 HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 HEADER_FONT = Font(bold=True, color="FFFFFF", size=9)
+GROUP_FILLS = {
+    "Шапка": PatternFill("solid", fgColor="D6EAF8"),
+    "Сроки": PatternFill("solid", fgColor="D5F5E3"),
+    "Роли": PatternFill("solid", fgColor="FCF3CF"),
+    "Бригада": PatternFill("solid", fgColor="FADBD8"),
+    "Меры": PatternFill("solid", fgColor="E8DAEF"),
+    "Инструктаж": PatternFill("solid", fgColor="FDEBD0"),
+    "Допуск": PatternFill("solid", fgColor="D1F2EB"),
+    "Закрытие": PatternFill("solid", fgColor="D5D8DC"),
+}
 THIN = Border(
     left=Side(style="thin", color="B0B0B0"),
     right=Side(style="thin", color="B0B0B0"),
@@ -221,146 +259,79 @@ def iter_block_items(parent):
             yield Table(child, parent)
 
 
-def extract_order(text: str) -> tuple[str, str]:
-    compact = norm_space(text)
-    m = re.search(r"(?:N|№)\s*([0-9]+н)", compact, flags=re.I)
-    order = m.group(1) if m else ""
-    m2 = re.search(r"Правилам по охране труда (.+?),?\s*утвержденн", compact, flags=re.I)
-    topic = norm_space(m2.group(1)) if m2 else ""
-    return order, topic
-
-
-def short_name(title: str, order: str) -> str:
-    tl = title.lower()
-    if order == "922н":
-        if "судовых" in tl:
-            return "Водолазные судовые (922н)"
-        if "наряд-задание" in tl:
-            return "Водолазные наряд-задание (922н)"
-        return "Водолазные работы (922н)"
-    base = ORDER_NAMES.get(order, title[:35])
-    return f"{base} ({order})" if order else base
-
-
-def extract_literal_components(chunk: list[tuple[str, object]]) -> list[str]:
-    """Дословные составляющие бланка: поля, заголовки разделов, заголовки таблиц."""
-    comps: list[str] = []
-    skip_re = re.compile(
-        r"^(Приложение|Рекомендуемый образец|Лицевая сторона|Оборотная сторона|"
-        r"ДЛЯ РАБОТЫ|ЗАПОЛНЕНИЮ|Примечание\.?|НАРЯД-ДОПУСК$|Наряд-допуск$|"
-        r"НА ПРОИЗВОДСТВО|на производство работ)",
-        re.I,
-    )
-
-    for kind, payload in chunk:
-        if kind == "p":
-            t = norm_space(str(payload))
-            if not t or skip_re.search(t):
-                # keep title НАРЯД-ДОПУСК №...
-                if re.search(r"НАРЯД[-\s]?ДОПУСК\s*[N№n]", t, re.I) or re.search(r"Наряд-допуск\s+N", t, re.I):
-                    comps.append(t)
-                continue
-            # numbered sections / labeled fields / blanks
-            if (
-                re.match(r"^\d+(\.\d+)*\.", t)
-                or "____" in t
-                or t.endswith(":")
-                or re.search(r"(выдал|принял|продлил|закрыт|поручается|начало|окончание|состав|мероприяти|инструктаж|разреш|согласован)", t, re.I)
-            ):
-                # skip pure underscores continuation lines
-                if re.fullmatch(r"[_\s.…—\-]+", t):
-                    continue
-                # skip parenthetical-only hints unless they contain key terms
-                if t.startswith("(") and t.endswith(")") and "электробезопасн" not in t.lower():
-                    # keep electro group hints and role hints
-                    if any(k in t.lower() for k in ("фамилия", "должность", "подпись", "группа")):
-                        comps.append(t)
-                    continue
-                comps.append(t)
-        else:
-            rows = payload
-            if not rows:
-                continue
-            header = " | ".join(norm_space(c) for c in rows[0])
-            # skip empty/numeric-only headers
-            if re.fullmatch(r"[\d\s\|]+", header):
-                continue
-            comps.append(f"[таблица] {header}")
-
-    # de-dupe preserving order
-    out, seen = [], set()
-    for c in comps:
-        key = c.lower()
-        if key not in seen:
-            seen.add(key)
-            out.append(c)
-    return out
-
-
 def find_literal(text: str, patterns: list[str]) -> str | None:
     for pat in patterns:
         m = re.search(pat, text, flags=re.I | re.DOTALL)
         if m:
             frag = norm_space(m.group(0))
-            # trim trailing underscores for readability but keep wording
             frag = re.sub(r"[_…—\-]{3,}$", "", frag).strip(" :")
-            if len(frag) > 180:
-                frag = frag[:177] + "..."
+            if len(frag) > 160:
+                frag = frag[:157] + "..."
             return frag
     return None
 
 
+def extract_meta(text: str) -> tuple[str, str, str]:
+    compact = norm_space(text)
+    m = re.search(r"Правилам по охране труда (.+?),?\s*утвержденн", compact, flags=re.I)
+    topic = norm_space(m.group(1).strip(" ,")) if m else ""
+    m_order = re.search(r"(?:N|№)\s*([0-9]+н)", compact, flags=re.I)
+    order_no = m_order.group(1) if m_order else ""
+    m_date = re.search(r"от\s+(\d{1,2}\s+[а-яё]+\s+\d{4}\s*г\.?)", compact, flags=re.I)
+    order_date = m_date.group(1) if m_date else ""
+    return topic, order_no, order_date
+
+
+def short_name(title: str, order_no: str) -> str:
+    title_l = title.lower()
+    if order_no == "922н":
+        if "судовых" in title_l:
+            return "Водолазные судовые (922н)"
+        if "наряд-задание" in title_l:
+            return "Водолазные наряд-задание (922н)"
+        return "Водолазные работы (922н)"
+    base = ORDER_NAMES.get(order_no, title[:30])
+    return f"{base} ({order_no})" if order_no else base
+
+
 def build_forms(doc: Document) -> list[dict]:
-    blocks: list[tuple[str, object]] = []
+    blocks: list[str] = []
     for block in iter_block_items(doc):
         if isinstance(block, Paragraph):
             t = block.text.strip()
             if t:
-                blocks.append(("p", t))
+                blocks.append(t)
         else:
-            rows = []
+            cells = []
             for row in block.rows:
-                cells, seen = [], set()
                 for cell in row.cells:
-                    ct = norm_space(cell.text)
-                    if ct and ct not in seen:
+                    ct = cell.text.strip()
+                    if ct:
                         cells.append(ct)
-                        seen.add(ct)
-                if cells:
-                    rows.append(cells)
-            if rows:
-                blocks.append(("t", rows))
+            if cells:
+                blocks.append("\n".join(cells))
 
-    starts = [i for i, (k, t) in enumerate(blocks) if k == "p" and str(t).startswith("Приложение")]
+    starts = [i for i, t in enumerate(blocks) if t.startswith("Приложение")]
     forms = []
     for si, start in enumerate(starts):
         end = starts[si + 1] if si + 1 < len(starts) else len(blocks)
         chunk = blocks[start:end]
-        appendix = str(chunk[0][1])
-        order, topic = extract_order(appendix)
-        title = "Наряд-допуск"
-        for k, t in chunk[:12]:
-            if k == "p" and re.search(r"НАРЯД|Наряд-допуск|Наряд-задание", str(t)):
-                title = norm_space(str(t))
-                break
-        # full text for search (paragraphs + table headers)
-        parts = []
-        for k, t in chunk:
-            if k == "p":
-                parts.append(str(t))
-            else:
-                for row in t:
-                    parts.append(" | ".join(row))
-        full = "\n".join(parts)
+        full = "\n".join(chunk)
+        appendix = chunk[0]
+        topic, order_no, order_date = extract_meta(appendix)
+        title = next(
+            (norm_space(t) for t in chunk[:12] if re.search(r"НАРЯД|Наряд-допуск|Наряд-задание", t)),
+            "Наряд-допуск",
+        )
         forms.append(
             {
                 "idx": si + 1,
-                "name": short_name(title, order),
-                "title": title,
-                "order": order,
+                "name": short_name(title, order_no),
+                "title": title[:140],
                 "topic": topic,
+                "order_no": order_no,
+                "order_date": order_date,
                 "full": full,
-                "components": extract_literal_components(chunk),
             }
         )
 
@@ -382,168 +353,210 @@ def style_header(cell):
     cell.border = THIN
 
 
+def is_present(val) -> bool:
+    return bool(val) and val != NO
+
+
 def main():
     forms = build_forms(Document(str(INPUT)))
 
-    # Comparison matrix with LITERAL text in cells
-    matrix = []
-    for slot_name, patterns in COMPARE_SLOTS:
-        row = {"slot": slot_name}
+    # matrix: field -> form -> literal text or NO
+    matrix: list[dict] = []
+    for group, field, patterns in FIELDS:
+        row = {"group": group, "field": field}
         for f in forms:
             lit = find_literal(f["full"], patterns)
-            row[f["name"]] = lit  # exact fragment or None
+            row[f["name"]] = lit if lit else NO
         matrix.append(row)
+
+    for f in forms:
+        f["need_count"] = sum(1 for r in matrix if is_present(r[f["name"]]))
 
     wb = Workbook()
 
-    # ---- 1. Сравнение: в ячейках дословный текст ----
+    # ========== 1. Матрица (структура 1-го файла, зелёные ячейки — дословно) ==========
     ws = wb.active
-    ws.title = "Сравнение (дословно)"
-    headers = ["Составляющая (для сравнения)"] + [f["name"] for f in forms] + ["Есть в N нарядах"]
+    ws.title = "Что указывать (матрица)"
+    headers = ["Группа", "Составляющая наряда"] + [f["name"] for f in forms] + ["В скольких нарядах нужно"]
     for col, h in enumerate(headers, 1):
         style_header(ws.cell(1, col, h))
-    ws.row_dimensions[1].height = 55
-    ws.freeze_panes = "B2"
+    ws.row_dimensions[1].height = 70
+    ws.freeze_panes = "C2"
 
     for ri, row in enumerate(matrix, 2):
-        c0 = ws.cell(ri, 1, row["slot"])
-        c0.alignment = Alignment(wrap_text=True, vertical="center")
-        c0.border = THIN
-        c0.font = Font(bold=True, size=9)
-        cnt = 0
-        for ci, f in enumerate(forms, 2):
-            val = row[f["name"]]
-            if val:
-                cell = ws.cell(ri, ci, val)
-                cell.fill = YES_FILL
-                cell.font = Font(size=8, color="006100")
-                cnt += 1
-            else:
-                cell = ws.cell(ri, ci, "—")
-                cell.fill = NO_FILL
-                cell.font = Font(size=8, color="A0A0A0")
-            cell.alignment = Alignment(wrap_text=True, vertical="top", horizontal="left")
-            cell.border = THIN
-        tot = ws.cell(ri, len(forms) + 2, cnt)
-        tot.alignment = Alignment(horizontal="center", vertical="center")
-        tot.font = Font(bold=True)
-        tot.border = THIN
-        ws.row_dimensions[ri].height = 45
+        g = ws.cell(ri, 1, row["group"])
+        g.fill = GROUP_FILLS.get(row["group"], PatternFill())
+        g.alignment = Alignment(vertical="center", horizontal="center")
+        g.border = THIN
+        g.font = Font(bold=True, size=9)
 
-    ws.column_dimensions["A"].width = 42
-    for i in range(2, len(forms) + 3):
-        ws.column_dimensions[get_column_letter(i)].width = 22
+        fcell = ws.cell(ri, 2, row["field"])
+        fcell.alignment = Alignment(wrap_text=True, vertical="center")
+        fcell.border = THIN
+        fcell.fill = GROUP_FILLS.get(row["group"], PatternFill())
 
-    # ---- 2. Группа по ЭБ отдельно (проверка) ----
-    ws_e = wb.create_sheet("Проверка группы по ЭБ")
-    style_header(ws_e.cell(1, 1, "Наряд"))
-    style_header(ws_e.cell(1, 2, "Приказ"))
-    style_header(ws_e.cell(1, 3, "Есть группа по электробезопасности?"))
-    style_header(ws_e.cell(1, 4, "Дословная формулировка из бланка"))
-    ri = 2
-    for f in forms:
-        hits = []
-        for line in f["full"].split("\n"):
-            if "электробезопасн" in line.lower():
-                hits.append(norm_space(line))
-        ws_e.cell(ri, 1, f["name"]).border = THIN
-        ws_e.cell(ri, 2, f["order"]).border = THIN
-        if hits:
-            ws_e.cell(ri, 3, "ДА").fill = YES_FILL
-            ws_e.cell(ri, 3).font = Font(bold=True, color="006100")
-            ws_e.cell(ri, 4, "\n".join(hits)).alignment = Alignment(wrap_text=True)
-            ws_e.row_dimensions[ri].height = 20 * max(1, len(hits))
-        else:
-            ws_e.cell(ri, 3, "НЕТ").fill = NO_FILL
-            ws_e.cell(ri, 4, "—")
-        for col in range(1, 5):
-            ws_e.cell(ri, col).border = THIN
-            ws_e.cell(ri, col).alignment = Alignment(wrap_text=True, vertical="top")
-        ri += 1
-    ws_e.column_dimensions["A"].width = 34
-    ws_e.column_dimensions["B"].width = 10
-    ws_e.column_dimensions["C"].width = 18
-    ws_e.column_dimensions["D"].width = 90
-
-    note = (
-        "Итог перепроверки: формулировка «группа по электробезопасности» есть только в бланках "
-        "903н (электроустановки), 883н (строительство — графа таблицы состава исполнителей) "
-        "и 746н (сельское хозяйство — графа таблицы инструктажа). В остальных нарядах — нет."
-    )
-    ws_e.cell(ri + 1, 1, note)
-    ws_e.merge_cells(start_row=ri + 1, start_column=1, end_row=ri + 1, end_column=4)
-    ws_e.cell(ri + 1, 1).alignment = Alignment(wrap_text=True)
-    ws_e.row_dimensions[ri + 1].height = 50
-
-    # ---- 3. Дословный перечень по каждому наряду ----
-    ws2 = wb.create_sheet("Дословно по нарядам")
-    style_header(ws2.cell(1, 1, "№"))
-    style_header(ws2.cell(1, 2, "Наряд"))
-    style_header(ws2.cell(1, 3, "Приказ"))
-    style_header(ws2.cell(1, 4, "Составляющие бланка (слово в слово)"))
-    style_header(ws2.cell(1, 5, "Кол-во"))
-    for ri, f in enumerate(forms, 2):
-        ws2.cell(ri, 1, f["idx"]).border = THIN
-        ws2.cell(ri, 2, f["name"]).border = THIN
-        ws2.cell(ri, 3, f["order"]).border = THIN
-        text = "\n".join(f"• {c}" for c in f["components"])
-        c = ws2.cell(ri, 4, text)
-        c.alignment = Alignment(wrap_text=True, vertical="top")
-        c.border = THIN
-        ws2.cell(ri, 5, len(f["components"])).border = THIN
-        ws2.row_dimensions[ri].height = min(400, max(60, 10 * len(f["components"])))
-        for col in range(1, 6):
-            ws2.cell(ri, col).alignment = Alignment(wrap_text=True, vertical="top")
-            ws2.cell(ri, col).border = THIN
-    ws2.column_dimensions["A"].width = 5
-    ws2.column_dimensions["B"].width = 32
-    ws2.column_dimensions["C"].width = 10
-    ws2.column_dimensions["D"].width = 100
-    ws2.column_dimensions["E"].width = 10
-
-    # ---- 4. Реестр ----
-    ws3 = wb.create_sheet("Реестр", 0)
-    for col, h in enumerate(["№", "Наряд", "Область ПОТ", "Приказ", "Составляющих в бланке"], 1):
-        style_header(ws3.cell(1, col, h))
-    for ri, f in enumerate(forms, 2):
-        for ci, v in enumerate([f["idx"], f["name"], f["topic"], f["order"], len(f["components"])], 1):
-            c = ws3.cell(ri, ci, v)
+        need_n = 0
+        for ci, form in enumerate(forms, 3):
+            val = row[form["name"]]
+            c = ws.cell(ri, ci, val)
             c.border = THIN
-            c.alignment = Alignment(wrap_text=True, vertical="center")
-    ws3.column_dimensions["A"].width = 5
-    ws3.column_dimensions["B"].width = 34
-    ws3.column_dimensions["C"].width = 55
-    ws3.column_dimensions["D"].width = 10
-    ws3.column_dimensions["E"].width = 16
+            if is_present(val):
+                c.fill = YES_FILL
+                c.font = YES_FONT
+                c.alignment = Alignment(wrap_text=True, vertical="top", horizontal="left")
+                need_n += 1
+            else:
+                c.fill = NO_FILL
+                c.font = NO_FONT
+                c.alignment = Alignment(horizontal="center", vertical="center")
+        total = ws.cell(ri, len(forms) + 3, need_n)
+        total.alignment = Alignment(horizontal="center", vertical="center")
+        total.font = Font(bold=True)
+        total.border = THIN
+        ws.row_dimensions[ri].height = 40
 
-    # ---- 5. Как читать ----
-    ws4 = wb.create_sheet("Как читать")
-    ws4["A1"] = "Как читать (после перепроверки)"
-    ws4["A1"].font = Font(bold=True, size=14)
+    tr = len(matrix) + 2
+    ws.cell(tr, 1, "").border = THIN
+    ws.cell(tr, 2, "Сколько составляющих нужно заполнять").font = Font(bold=True)
+    ws.cell(tr, 2).border = THIN
+    for ci, form in enumerate(forms, 3):
+        c = ws.cell(tr, ci, form["need_count"])
+        c.font = Font(bold=True)
+        c.alignment = Alignment(horizontal="center")
+        c.fill = PatternFill("solid", fgColor="DDEBF7")
+        c.border = THIN
+
+    ws.column_dimensions["A"].width = 12
+    ws.column_dimensions["B"].width = 48
+    for i in range(3, len(forms) + 4):
+        ws.column_dimensions[get_column_letter(i)].width = 18
+
+    # ========== 2. По составляющей ==========
+    ws2 = wb.create_sheet("По составляющей")
+    for col, h in enumerate(
+        ["Группа", "Составляющая", "Нужно указывать (наряды)", "Не нужно (наряды)", "Нужно, шт.", "Нет, шт."],
+        1,
+    ):
+        style_header(ws2.cell(1, col, h))
+    ws2.freeze_panes = "A2"
+
+    for ri, row in enumerate(matrix, 2):
+        need = [f["name"] for f in forms if is_present(row[f["name"]])]
+        skip = [f["name"] for f in forms if not is_present(row[f["name"]])]
+        values = [
+            row["group"],
+            row["field"],
+            "; ".join(need) if need else "—",
+            "; ".join(skip) if skip else "—",
+            len(need),
+            len(skip),
+        ]
+        for ci, v in enumerate(values, 1):
+            c = ws2.cell(ri, ci, v)
+            c.alignment = Alignment(wrap_text=True, vertical="top")
+            c.border = THIN
+            if ci == 1:
+                c.fill = GROUP_FILLS.get(row["group"], PatternFill())
+                c.font = Font(bold=True, size=9)
+            if ci == 3 and need:
+                c.fill = YES_FILL
+            if ci == 4 and skip:
+                c.fill = NO_FILL
+        ws2.row_dimensions[ri].height = max(30, 15 * (1 + max(len(need), len(skip)) // 3))
+
+    ws2.column_dimensions["A"].width = 12
+    ws2.column_dimensions["B"].width = 45
+    ws2.column_dimensions["C"].width = 55
+    ws2.column_dimensions["D"].width = 55
+    ws2.column_dimensions["E"].width = 12
+    ws2.column_dimensions["F"].width = 10
+
+    # ========== 3. Чек-лист по наряду ==========
+    ws3 = wb.create_sheet("Чек-лист по наряду")
+    style_header(ws3.cell(1, 1, "Наряд-допуск"))
+    style_header(ws3.cell(1, 2, "Приказ"))
+    style_header(ws3.cell(1, 3, "Что НУЖНО указывать"))
+    style_header(ws3.cell(1, 4, "Чего НЕТ в бланке"))
+    style_header(ws3.cell(1, 5, "Нужно, шт."))
+    ws3.freeze_panes = "A2"
+
+    for ri, form in enumerate(forms, 2):
+        need_items = []
+        skip_items = []
+        for r in matrix:
+            if is_present(r[form["name"]]):
+                # в чек-листе: название составляющей + дословная формулировка
+                need_items.append(f"• {r['field']}\n  → {r[form['name']]}")
+            else:
+                skip_items.append(f"• {r['field']}")
+        ws3.cell(ri, 1, form["name"]).alignment = Alignment(wrap_text=True, vertical="top")
+        ws3.cell(ri, 2, form["order_no"]).alignment = Alignment(horizontal="center", vertical="top")
+        c3 = ws3.cell(ri, 3, "\n".join(need_items))
+        c3.alignment = Alignment(wrap_text=True, vertical="top")
+        c3.fill = YES_FILL
+        c4 = ws3.cell(ri, 4, "\n".join(skip_items))
+        c4.alignment = Alignment(wrap_text=True, vertical="top")
+        c4.fill = NO_FILL
+        ws3.cell(ri, 5, len(need_items)).alignment = Alignment(horizontal="center", vertical="top")
+        for ci in range(1, 6):
+            ws3.cell(ri, ci).border = THIN
+        ws3.row_dimensions[ri].height = min(420, max(80, 14 * max(len(need_items), len(skip_items), 4)))
+
+    ws3.column_dimensions["A"].width = 32
+    ws3.column_dimensions["B"].width = 10
+    ws3.column_dimensions["C"].width = 60
+    ws3.column_dimensions["D"].width = 45
+    ws3.column_dimensions["E"].width = 12
+
+    # ========== 4. Реестр ==========
+    ws4 = wb.create_sheet("Реестр нарядов", 0)
+    for col, h in enumerate(
+        ["№", "Наряд-допуск", "Область ПОТ", "Приказ", "Дата", "Составляющих нужно указать"],
+        1,
+    ):
+        style_header(ws4.cell(1, col, h))
+    for ri, f in enumerate(forms, 2):
+        for ci, v in enumerate(
+            [f["idx"], f["name"], f["topic"], f["order_no"], f["order_date"], f["need_count"]],
+            1,
+        ):
+            c = ws4.cell(ri, ci, v)
+            c.alignment = Alignment(wrap_text=True, vertical="center")
+            c.border = THIN
+    ws4.column_dimensions["A"].width = 5
+    ws4.column_dimensions["B"].width = 36
+    ws4.column_dimensions["C"].width = 50
+    ws4.column_dimensions["D"].width = 10
+    ws4.column_dimensions["E"].width = 22
+    ws4.column_dimensions["F"].width = 18
+
+    # ========== 5. Как читать ==========
+    ws5 = wb.create_sheet("Как читать")
+    ws5["A1"] = "Как читать таблицу"
+    ws5["A1"].font = Font(bold=True, size=14)
     notes = [
-        "В листе «Сравнение (дословно)» в зелёных ячейках — фрагмент текста ИЗ бланка, не пересказ.",
-        "«—» значит, что такой составляющей в бланке нет.",
-        "Лист «Проверка группы по ЭБ» — отдельная перепроверка вашего вопроса.",
-        "Лист «Дословно по нарядам» — полный перечень полей/разделов/заголовков таблиц каждого бланка.",
-        "Группа по электробезопасности: ДА только в 903н, 883н и 746н (см. дословные формулировки).",
+        "Колонки «Группа» и «Составляющая наряда» — как в первом файле (единый список для сравнения).",
+        "Зелёные ячейки — дословная формулировка из бланка этого наряда (как во втором файле).",
+        "Серое «Нет» — в бланке такой составляющей нет.",
+        "Листы «Реестр нарядов», «По составляющей», «Чек-лист по наряду» — сохранены как в первом файле.",
+        "В чек-листе для нужных пунктов дополнительно показана стрелка «→» с дословным текстом из бланка.",
+        "Группа по электробезопасности дословно есть только в 903н, 883н и 746н.",
     ]
     for i, n in enumerate(notes, 3):
-        ws4.cell(i, 1, f"• {n}")
-    ws4.column_dimensions["A"].width = 110
+        ws5.cell(i, 1, f"• {n}").alignment = Alignment(wrap_text=True)
+    ws5.column_dimensions["A"].width = 120
 
     wb.save(OUTPUT)
+    print(f"Saved {OUTPUT}")
+    print(f"Forms: {len(forms)}, components: {len(FIELDS)}")
 
-    # Console verification for electro group
-    print("=== ГРУППА ПО ЭЛЕКТРОБЕЗОПАСНОСТИ ===")
-    for f in forms:
-        hits = [norm_space(l) for l in f["full"].split("\n") if "электробезопасн" in l.lower()]
-        if hits:
-            print(f"YES {f['name']}:")
-            for h in hits:
-                print("   ", h[:160])
-        else:
-            print(f"NO  {f['name']}")
-    print(f"\nSaved {OUTPUT}, forms={len(forms)}")
+    # sample green cells
+    for field_name in ["Группа по электробезопасности", "Дата и время начала работ", "Наблюдающий"]:
+        row = next(r for r in matrix if r["field"] == field_name)
+        print(f"\n{field_name}:")
+        for f in forms:
+            if is_present(row[f["name"]]):
+                print(f"  {f['name']}: {row[f['name']]}")
 
 
 if __name__ == "__main__":
