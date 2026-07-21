@@ -35,12 +35,26 @@ CASE_ID_TO_KEY = [
     (r"Онлайнинспекция", "onlainspekciya-do-td"),
 ]
 
+# Дела из файла пользователя (74b7.xlsx) — подсветка голубым
+USER_CASE_KEYS = frozenset({
+    "33-7199-14",
+    "83-ad17-2",
+    "glazkov-eurasia",
+    "16-3241-2020",
+    "ulyanovsk-hasanov",
+    "33a-6948-2024",
+    "2-357-2025",
+    "52rs0004-2-17-2025",
+    "08ap-10045-25",
+})
+
 HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 HEADER_FONT = Font(bold=True, color="FFFFFF", size=10)
 YES_FILL = PatternFill("solid", fgColor="C6EFCE")
 NO_FILL = PatternFill("solid", fgColor="F8CBAD")
 MIX_FILL = PatternFill("solid", fgColor="FFF2CC")
 NS_FILL = PatternFill("solid", fgColor="FCE4D6")
+USER_FILL = PatternFill("solid", fgColor="BDD7EE")  # голубой — дела пользователя
 THIN = Border(
     left=Side(style="thin", color="B0B0B0"),
     right=Side(style="thin", color="B0B0B0"),
@@ -464,6 +478,22 @@ def row_to_case(row: list) -> dict:
     }
 
 
+def load_user_keys() -> set[str]:
+    """Ключи дел из загруженного пользователем xlsx (+ запасной список USER_CASE_KEYS)."""
+    keys = set(USER_CASE_KEYS)
+    if not USER_UPLOAD.exists():
+        return keys
+    ws = load_workbook(USER_UPLOAD, data_only=True)["Судебная практика"]
+    for r in range(2, ws.max_row + 1):
+        num = ws.cell(r, 3).value
+        if not num:
+            continue
+        k = resolve_key(str(num))
+        if k:
+            keys.add(k)
+    return keys
+
+
 def merge_user_upload(by_key: dict) -> tuple[int, int]:
     """Влить дела из загруженного xlsx. Возвращает (обновлено, добавлено)."""
     if not USER_UPLOAD.exists():
@@ -504,6 +534,7 @@ def main():
     for c in CASES:
         by_key[c["key"]] = dict(c)
     upd, new = merge_user_upload(by_key)
+    user_keys = load_user_keys()
     cases = sorted(by_key.values(), key=lambda x: (x["year"] or 0, x["number"] or ""))
 
     wb = Workbook()
@@ -520,6 +551,7 @@ def main():
         "Лист «Пары и противоположности» — однотипные ситуации с разными исходами.",
         "Важно: сама подпись НС не вызывает; суды оценивают реальность инструктажа и подлинность подписи.",
         f"Из файла пользователя (74b7.xlsx): обновлено {upd} дел, добавлено {new} новых.",
+        "На листе «Судебная практика»: голубая заливка — ваши 9 дел; без цвета — дополнительная подборка агента.",
     ]
     for i, n in enumerate(notes, 3):
         ws0.cell(i, 1, f"• {n}").alignment = Alignment(wrap_text=True)
@@ -529,6 +561,7 @@ def main():
     ws = wb.create_sheet("Судебная практика")
     headers = [
         "№",
+        "Чьё дело",
         "Год",
         "Номер дела / акт",
         "Суд",
@@ -547,11 +580,14 @@ def main():
     for col, h in enumerate(headers, 1):
         style_header(ws.cell(1, col, h))
     ws.row_dimensions[1].height = 40
-    ws.freeze_panes = "C2"
+    ws.freeze_panes = "D2"
 
     for ri, c in enumerate(cases, 2):
+        is_user = c["key"] in user_keys
+        owner = "Ваше" if is_user else "Доп. подборка"
         vals = [
             ri - 1,
+            owner,
             c["year"],
             c["number"],
             c["court"],
@@ -571,49 +607,29 @@ def main():
             cell = ws.cell(ri, ci, v)
             cell.alignment = Alignment(wrap_text=True, vertical="top")
             cell.border = THIN
-            if ci == 6:
-                ns = str(v)
-                if ns.startswith("Да"):
-                    cell.fill = NS_FILL
-                elif ns.startswith("Нет"):
-                    cell.fill = YES_FILL
-                else:
-                    cell.fill = MIX_FILL
-            if ci == 11:
-                side_l = str(v).lower()
-                out_l = c["outcome"].lower()
-                if "работодатель" in side_l and ("выиграл" in out_l or "отсутствует" in out_l or "отказ" in out_l):
-                    cell.fill = YES_FILL
-                elif "гит" in side_l or "работник" in side_l:
-                    cell.fill = NO_FILL if "работник" not in side_l or "за работник" in out_l else YES_FILL
-                    if "работник" in side_l:
-                        cell.fill = YES_FILL if "за работник" in out_l or "выиграл" not in out_l else MIX_FILL
-                        if "за работник" in out_l:
-                            cell.fill = YES_FILL
-                        elif "проиграл" in out_l:
-                            cell.fill = NO_FILL
-                else:
-                    cell.fill = MIX_FILL
+            if is_user:
+                cell.fill = USER_FILL
         ws.row_dimensions[ri].height = 72
 
     autosize(
         ws,
         {
             "A": 4,
-            "B": 6,
-            "C": 48,
-            "D": 28,
-            "E": 34,
-            "F": 18,
-            "G": 40,
-            "H": 32,
-            "I": 34,
-            "J": 28,
-            "K": 18,
-            "L": 38,
-            "M": 28,
-            "N": 35,
-            "O": 18,
+            "B": 14,
+            "C": 6,
+            "D": 48,
+            "E": 28,
+            "F": 34,
+            "G": 18,
+            "H": 40,
+            "I": 32,
+            "J": 34,
+            "K": 28,
+            "L": 18,
+            "M": 38,
+            "N": 28,
+            "O": 35,
+            "P": 18,
         },
     )
 
