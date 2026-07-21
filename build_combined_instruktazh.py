@@ -1,12 +1,39 @@
 #!/usr/bin/env python3
 """Объединённый Excel: подпись инструктажа + НС, сортировка по году."""
 
+import re
 from collections import defaultdict
+from pathlib import Path
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 OUTPUT = "/workspace/Судпрактика_подпись_инструктажа_ОБЪЕДИНЁННАЯ.xlsx"
+USER_UPLOAD = Path(
+    "/home/ubuntu/.cursor/projects/workspace/uploads/_____________________________________________74b7.xlsx"
+)
+
+# фрагмент номера дела → key в CASES
+CASE_ID_TO_KEY = [
+    (r"33-7199/14", "33-7199-14"),
+    (r"83-АД17-2", "83-ad17-2"),
+    (r"Глазков|Евразия", "glazkov-eurasia"),
+    (r"16-3241/2020", "16-3241-2020"),
+    (r"Хасанов", "ulyanovsk-hasanov"),
+    (r"33а-6948/2024", "33a-6948-2024"),
+    (r"2-357/2025", "2-357-2025"),
+    (r"2-17/2025|52RS0004", "52rs0004-2-17-2025"),
+    (r"08АП-10045/25", "08ap-10045-25"),
+    (r"67-КГ22-6-К8|Ермолаев", "ermolaev-hleb-2019"),
+    (r"Новый мир", "novyi-mir-2013"),
+    (r"Зерновая компания", "zernovaya-elista-2023"),
+    (r"12-183/19", "12-183-19"),
+    (r"84-АД17-1", "84-ad17-1"),
+    (r"12-460/2016", "12-460-2016"),
+    (r"33-2135/2012", "33-2135-2012"),
+    (r"16-1837/2025", "16-1837-2025"),
+    (r"Онлайнинспекция", "onlainspekciya-do-td"),
+]
 
 HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
 HEADER_FONT = Font(bold=True, color="FFFFFF", size=10)
@@ -124,7 +151,7 @@ CASES = [
         "side": "ГИТ",
         "conclusion": "Критичен факт допуска без обучения",
         "group": "Опоздание инструктажа после приёма",
-        "link": "https://www.kiout.ru/info/news/29653",
+        "link": "https://base.garant.ru/313712200/",
         "source": "Общая практика",
     },
     {
@@ -244,7 +271,7 @@ CASES = [
         "side": "Работник",
         "conclusion": "Нет записи в журнале при НС = работодатель не доказал инструктаж",
         "group": "НС: нет подписи/обучения",
-        "link": "https://t-j.ru/news/rostrud-sam-sebe/",
+        "link": "https://meganorm.ru/mega_doc/dop1/57/statya_provodim_instruktazhi_po_okhrane_truda_zhizherina_yu/0/apellyatsionnoe_opredelenie_omskogo_oblastnogo_suda_ot_12_11.html",
         "source": "НС-подборка",
     },
     {
@@ -407,12 +434,77 @@ def autosize(ws, widths):
         ws.column_dimensions[col].width = w
 
 
+def resolve_key(number: str) -> str | None:
+    if not number:
+        return None
+    for pattern, key in CASE_ID_TO_KEY:
+        if re.search(pattern, number, re.I):
+            return key
+    return None
+
+
+def row_to_case(row: list) -> dict:
+    """Строка листа «Судебная практика» из пользовательского xlsx → dict CASES."""
+    return {
+        "key": resolve_key(str(row[2] or "")) or f"user-{hash(row[2]) % 10**8}",
+        "year": row[1],
+        "number": row[2],
+        "court": row[3],
+        "category": row[4],
+        "ns_related": row[5],
+        "scenario": row[6],
+        "timing": row[7],
+        "issue": row[8],
+        "outcome": row[9],
+        "side": row[10],
+        "conclusion": row[11],
+        "group": row[12],
+        "link": row[13],
+        "source": (row[14] or "Файл пользователя") + " (файл пользователя)",
+    }
+
+
+def merge_user_upload(by_key: dict) -> tuple[int, int]:
+    """Влить дела из загруженного xlsx. Возвращает (обновлено, добавлено)."""
+    if not USER_UPLOAD.exists():
+        return 0, 0
+    ws = load_workbook(USER_UPLOAD, data_only=True)["Судебная практика"]
+    updated = added = 0
+    for r in range(2, ws.max_row + 1):
+        row = [ws.cell(r, c).value for c in range(1, 16)]
+        if not row[2]:
+            continue
+        incoming = row_to_case(row)
+        key = incoming["key"]
+        # год из номера дела приоритетнее ошибочного года в файле
+        if key == "33a-6948-2024":
+            incoming["year"] = 2024
+        elif key == "16-3241-2020":
+            incoming["year"] = 2020
+        elif key == "08ap-10045-25":
+            incoming["year"] = 2026
+        if key in by_key:
+            existing = by_key[key]
+            for field in ("link", "scenario", "timing", "issue", "outcome", "conclusion", "court", "category"):
+                if incoming.get(field):
+                    existing[field] = incoming[field]
+            if incoming.get("source"):
+                if "файл пользователя" not in (existing.get("source") or ""):
+                    existing["source"] = f"{existing.get('source', '')}; файл пользователя".strip("; ")
+            updated += 1
+        else:
+            by_key[key] = incoming
+            added += 1
+    return updated, added
+
+
 def main():
     # дедуп по key + сортировка по году, затем по номеру дела
     by_key = {}
     for c in CASES:
-        by_key[c["key"]] = c
-    cases = sorted(by_key.values(), key=lambda x: (x["year"], x["number"]))
+        by_key[c["key"]] = dict(c)
+    upd, new = merge_user_upload(by_key)
+    cases = sorted(by_key.values(), key=lambda x: (x["year"] or 0, x["number"] or ""))
 
     wb = Workbook()
 
@@ -427,6 +519,7 @@ def main():
         "Колонка «Связь с НС»: Да / Нет / Косвенно — чтобы быстро отфильтровать дела про травмы.",
         "Лист «Пары и противоположности» — однотипные ситуации с разными исходами.",
         "Важно: сама подпись НС не вызывает; суды оценивают реальность инструктажа и подлинность подписи.",
+        f"Из файла пользователя (74b7.xlsx): обновлено {upd} дел, добавлено {new} новых.",
     ]
     for i, n in enumerate(notes, 3):
         ws0.cell(i, 1, f"• {n}").alignment = Alignment(wrap_text=True)
@@ -597,7 +690,7 @@ def main():
 
     wb.save(OUTPUT)
     print(f"Saved {OUTPUT}")
-    print(f"Unique cases: {len(cases)}")
+    print(f"Unique cases: {len(cases)} (user upload: updated {upd}, added {new})")
     print("Years:", [c["year"] for c in cases])
 
 
