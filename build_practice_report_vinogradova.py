@@ -133,7 +133,7 @@ def build():
              first_line=False, space_before=12)
     add_para(doc, "по производственной практике", align=WD_ALIGN_PARAGRAPH.CENTER,
              bold=True, first_line=False)
-    add_para(doc, "студентки группы И-34\nВиноградова М.Е.",
+    add_para(doc, "студентки группы И-34\nВиноградова Мария Евгеньевна",
              align=WD_ALIGN_PARAGRAPH.CENTER, bold=True, first_line=False,
              space_before=8)
     add_para(doc, "\nНаправление подготовки 20.03.01 Техносферная безопасность",
