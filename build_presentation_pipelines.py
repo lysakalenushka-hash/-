@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build presentation about steam/hot water pipelines from LMS slide screenshots."""
+"""Build 1:1 pipeline presentation matching LMS screenshot style with images."""
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -8,159 +8,194 @@ from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Pt
 
 OUT = "/workspace/Презентация_Трубопроводы.pptx"
-
-RED = RGBColor(0xE3, 0x06, 0x13)
-DARK = RGBColor(0x1A, 0x1A, 0x1A)
-GRAY = RGBColor(0x6B, 0x72, 0x80)
-AMBER = RGBColor(0xF5, 0x9E, 0x0B)
-WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-LIGHT_BG = RGBColor(0xF5, 0xF8, 0xFC)
-LIGHT_GRAY = RGBColor(0xE5, 0xE7, 0xEB)
+IMG = "/workspace/assets/pipeline_images/generated"
 
 W = Emu(12191695)
 H = Emu(6858000)
-ML = Emu(548640)
-CW = Emu(11094415)
+ML = Emu(457200)
+TEXT_W = Emu(6400800)
+IMG_LEFT = Emu(7000000)
+IMG_W = Emu(5000000)
 TOTAL = 14
 
+ORANGE = RGBColor(0xFF, 0x66, 0x00)
+DARK = RGBColor(0x33, 0x33, 0x33)
+GRAY = RGBColor(0x66, 0x66, 0x66)
+RED = RGBColor(0xE3, 0x06, 0x13)
+WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+LIGHT_GRAY = RGBColor(0xE5, 0xE7, 0xEB)
+FONT = "Arial"
 
-def run(p, text, size=13, bold=False, color=DARK):
+
+def run(p, text, size=12, bold=False, color=DARK, italic=False):
     r = p.add_run()
     r.text = text
-    r.font.name = "Inter"
+    r.font.name = FONT
     r.font.size = Pt(size)
     r.font.bold = bold
+    r.font.italic = italic
     r.font.color.rgb = color
     return r
 
 
-def add_tb(slide, left, top, width, height, align=PP_ALIGN.LEFT):
+def tb(slide, left, top, width, height, align=PP_ALIGN.LEFT):
     box = slide.shapes.add_textbox(left, top, width, height)
-    box.text_frame.word_wrap = True
-    box.text_frame.vertical_anchor = MSO_ANCHOR.TOP
-    box.text_frame.paragraphs[0].alignment = align
+    tf = box.text_frame
+    tf.word_wrap = True
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    tf.paragraphs[0].alignment = align
     return box
 
 
-def add_bg(slide):
-    bg = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, W, H)
-    bg.fill.solid()
-    bg.fill.fore_color.rgb = LIGHT_BG
-    bg.line.fill.background()
+def bg(slide):
+    rect = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, W, H)
+    rect.fill.solid()
+    rect.fill.fore_color.rgb = WHITE
+    rect.line.fill.background()
 
 
-def add_line(slide):
-    ln = slide.shapes.add_connector(1, ML, Emu(6355080), ML + CW, Emu(6355080))
-    ln.line.color.rgb = RED
-    ln.line.width = Pt(1.5)
+def header_line(slide, top=Emu(1050000)):
+    orange = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, ML, top, Emu(4800000), Emu(36000))
+    orange.fill.solid()
+    orange.fill.fore_color.rgb = ORANGE
+    orange.line.fill.background()
+    gray = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(5257200), top, Emu(5600000), Emu(18000))
+    gray.fill.solid()
+    gray.fill.fore_color.rgb = DARK
+    gray.line.fill.background()
 
 
-def add_page(slide, num):
-    box = add_tb(slide, Emu(10271455), Emu(6492240), Emu(1188720), Emu(228600), PP_ALIGN.RIGHT)
-    p = box.text_frame.paragraphs[0]
-    run(p, f"{num:02d} / {TOTAL:02d}", 9, True, RED)
+def section_header(slide, title, subtitle=None):
+    t = tb(slide, ML, Emu(350000), TEXT_W, Emu(500000))
+    run(t.text_frame.paragraphs[0], title, 20, True, DARK)
+    header_line(slide)
+    if subtitle:
+        s = tb(slide, ML, Emu(1250000), TEXT_W, Emu(350000))
+        run(s.text_frame.paragraphs[0], subtitle, 13, True, DARK)
 
 
-def add_note(slide, text, top=Emu(5852160)):
-    box = add_tb(slide, Emu(731520), top, Emu(10728655), Emu(365760))
-    p = box.text_frame.paragraphs[0]
-    run(p, text, 14, True, AMBER)
+def slide_num(slide, num, top=Emu(2200000)):
+    sq = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(180000), top, Emu(420000), Emu(420000))
+    sq.fill.solid()
+    sq.fill.fore_color.rgb = ORANGE
+    sq.line.fill.background()
+    n = tb(slide, Emu(180000), top + Emu(40000), Emu(420000), Emu(340000), PP_ALIGN.CENTER)
+    run(n.text_frame.paragraphs[0], str(num), 18, True, WHITE)
 
 
-def header(slide, section, title, intro=None):
-    s = add_tb(slide, ML, Emu(548640), Emu(9000000), Emu(228600))
-    run(s.text_frame.paragraphs[0], section, 11, True, RED)
-    t = add_tb(slide, ML, Emu(850000), CW, Emu(700000))
-    run(t.text_frame.paragraphs[0], title, 28, True, DARK)
-    if intro:
-        i = add_tb(slide, ML, Emu(1600000), CW, Emu(400000))
-        run(i.text_frame.paragraphs[0], intro, 12, False, GRAY)
+def add_image(slide, path, left=IMG_LEFT, top=Emu(1200000), width=IMG_W, height=Emu(5200000)):
+    slide.shapes.add_picture(path, left, top, width=width, height=height)
 
 
-def numbered_list(slide, items, top=Emu(2150000)):
+def add_image_bottom(slide, path, top=Emu(3600000), height=Emu(2800000)):
+    slide.shapes.add_picture(path, Emu(900000), top, width=Emu(10400000), height=height)
+
+
+def bullets(slide, items, top=Emu(2200000), numbered=False, highlight_first=False):
     y = top
-    for idx, item in enumerate(items, 1):
-        n = add_tb(slide, ML, y, Emu(411480), Emu(274320))
-        run(n.text_frame.paragraphs[0], f"{idx:02d}", 14, True, RED)
-        b = add_tb(slide, Emu(1005840), y, Emu(10637215), Emu(520000))
-        run(b.text_frame.paragraphs[0], item, 13, False, DARK)
-        y += Emu(580000)
+    for i, item in enumerate(items, 1):
+        if numbered:
+            nbox = tb(slide, ML + Emu(500000), y, Emu(350000), Emu(280000))
+            run(nbox.text_frame.paragraphs[0], f"{i})", 12, True, ORANGE)
+            body_left = ML + Emu(900000)
+        else:
+            dot = slide.shapes.add_shape(MSO_SHAPE.OVAL, ML + Emu(520000), y + Emu(80000), Emu(90000), Emu(90000))
+            dot.fill.solid()
+            dot.fill.fore_color.rgb = ORANGE
+            dot.line.fill.background()
+            body_left = ML + Emu(900000)
+        bbox = tb(slide, body_left, y, TEXT_W - Emu(900000), Emu(520000))
+        p = bbox.text_frame.paragraphs[0]
+        if highlight_first and i == 1 and " — " in item:
+            label, text = item.split(" — ", 1)
+            run(p, label + " — ", 12, False, ORANGE)
+            run(p, text, 12, False, DARK)
+        else:
+            run(p, item, 12, False, DARK)
+        y += Emu(520000)
 
 
-def body_text(slide, text, top=Emu(2150000), height=Emu(3600000), size=13, color=DARK):
-    box = add_tb(slide, ML, top, CW, height)
-    p = box.text_frame.paragraphs[0]
-    run(p, text, size, False, color)
+def body_paragraph(slide, text, top=Emu(2200000), width=TEXT_W, size=12):
+    box = tb(slide, ML + Emu(500000), top, width, Emu(4200000))
+    run(box.text_frame.paragraphs[0], text, size, False, GRAY)
+
+
+def highlight_box(slide, parts, top=Emu(2100000)):
+    box = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, ML + Emu(400000), top, TEXT_W, Emu(650000))
+    box.fill.solid()
+    box.fill.fore_color.rgb = WHITE
+    box.line.color.rgb = RED
+    box.line.width = Pt(1.5)
+    tbox = tb(slide, ML + Emu(550000), top + Emu(120000), TEXT_W - Emu(200000), Emu(450000))
+    p = tbox.text_frame.paragraphs[0]
+    for text, bold, color in parts:
+        run(p, text, 12, bold, color)
 
 
 def title_slide(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bg(slide)
+    bg(slide)
+    left_blk = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(365760), Emu(1600000), Emu(6400800), Emu(3200000))
+    left_blk.fill.solid()
+    left_blk.fill.fore_color.rgb = LIGHT_GRAY
+    left_blk.line.fill.background()
+    right_blk = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(9144000), 0, Emu(3048000), H)
+    right_blk.fill.solid()
+    right_blk.fill.fore_color.rgb = LIGHT_GRAY
+    right_blk.line.fill.background()
 
-    block = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(365760), Emu(1600000), Emu(6400800), Emu(3200000))
-    block.fill.solid()
-    block.fill.fore_color.rgb = LIGHT_GRAY
-    block.line.fill.background()
+    t = tb(slide, Emu(640080), Emu(2200000), Emu(8000000), Emu(2000000))
+    lines = ["УСТРОЙСТВО И НАЗНАЧЕНИЕ", "ТРУБОПРОВОДОВ ПАРА", "И ГОРЯЧЕЙ ВОДЫ"]
+    for i, line in enumerate(lines):
+        p = t.text_frame.paragraphs[0] if i == 0 else t.text_frame.add_paragraph()
+        run(p, line, 24, True, DARK)
 
-    side = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(9144000), 0, Emu(3048000), H)
-    side.fill.solid()
-    side.fill.fore_color.rgb = LIGHT_GRAY
-    side.line.fill.background()
-
-    s = add_tb(slide, Emu(640080), Emu(2000000), Emu(8000000), Emu(228600))
-    run(s.text_frame.paragraphs[0], "Промышленная безопасность", 11, True, RED)
-
-    t = add_tb(slide, Emu(640080), Emu(2500000), Emu(8000000), Emu(1800000))
-    p = t.text_frame.paragraphs[0]
-    run(p, "УСТРОЙСТВО И НАЗНАЧЕНИЕ", 28, True, DARK)
-    p2 = t.text_frame.add_paragraph()
-    run(p2, "ТРУБОПРОВОДОВ ПАРА", 28, True, DARK)
-    p3 = t.text_frame.add_paragraph()
-    run(p3, "И ГОРЯЧЕЙ ВОДЫ", 28, True, DARK)
-
-    ln = slide.shapes.add_connector(1, Emu(640080), Emu(4500000), Emu(8500000), Emu(4500000))
-    ln.line.color.rgb = DARK
-    ln.line.width = Pt(3)
-    dot = slide.shapes.add_shape(MSO_SHAPE.OVAL, Emu(8450000), Emu(4470000), Emu(60000), Emu(60000))
+    ln = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(640080), Emu(4300000), Emu(7800000), Emu(36000))
+    ln.fill.solid()
+    ln.fill.fore_color.rgb = DARK
+    ln.line.fill.background()
+    dot = slide.shapes.add_shape(MSO_SHAPE.OVAL, Emu(8400000), Emu(4270000), Emu(60000), Emu(60000))
     dot.fill.solid()
-    dot.fill.fore_color.rgb = RED
+    dot.fill.fore_color.rgb = ORANGE
     dot.line.fill.background()
 
-    sub = add_tb(slide, Emu(640080), Emu(4700000), Emu(8000000), Emu(600000))
-    run(sub.text_frame.paragraphs[0], "ФНП при использовании оборудования, работающего под избыточным давлением", 12, False, GRAY)
 
-    add_line(slide)
-    add_page(slide, 1)
-
-
-def content_slide(prs, num, section, title, intro, items=None, body=None, note=None, highlight=None):
+def content_slide(prs, num, header, intro, body=None, items=None, note_item=None,
+                  image=None, image_bottom=False, highlight=None, subtitle=None):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bg(slide)
-    header(slide, section, title, intro)
+    bg(slide)
+    section_header(slide, header, subtitle if subtitle else None)
+    slide_num(slide, num)
 
+    y = Emu(1350000)
+    if intro:
+        ibox = tb(slide, ML + Emu(500000), y, TEXT_W, Emu(350000))
+        p = ibox.text_frame.paragraphs[0]
+        if note_item and ". " in intro:
+            prefix, rest = intro.split(". ", 1)
+            run(p, prefix + ". ", 12, False, DARK)
+            run(p, note_item, 12, True, ORANGE)
+            run(p, " " + rest, 12, False, DARK)
+        else:
+            run(p, intro, 12, False, DARK)
+        y = Emu(1750000)
+
+    top = Emu(2200000)
     if highlight:
-        box = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, ML, Emu(2100000), CW, Emu(700000))
-        box.fill.solid()
-        box.fill.fore_color.rgb = WHITE
-        box.line.color.rgb = RED
-        box.line.width = Pt(1.5)
-        tb = add_tb(slide, Emu(700000), Emu(2200000), Emu(10500000), Emu(550000))
-        p = tb.text_frame.paragraphs[0]
-        for part, bold, color in highlight:
-            run(p, part, 13, bold, color)
+        highlight_box(slide, highlight, Emu(2100000))
+        top = Emu(2900000)
 
+    if body:
+        body_paragraph(slide, body, top)
     if items:
-        top = Emu(3000000) if highlight else Emu(2150000)
-        numbered_list(slide, items, top)
-    elif body:
-        top = Emu(3000000) if highlight else Emu(2150000)
-        body_text(slide, body, top)
+        bullets(slide, items, top, numbered=("состоит" in (intro or "")), highlight_first=bool(note_item))
 
-    if note:
-        add_note(slide, note)
-
-    add_line(slide)
-    add_page(slide, num)
+    if image:
+        if image_bottom:
+            add_image_bottom(slide, image)
+        else:
+            add_image(slide, image)
+    return slide
 
 
 def main():
@@ -170,139 +205,123 @@ def main():
 
     title_slide(prs)
 
+    # 2 FNP order
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    bg(s)
+    section_header(s, "ФЕДЕРАЛЬНЫЕ НОРМЫ И ПРАВИЛА В ОБЛАСТИ ПРОМЫШЛЕННОЙ БЕЗОПАСНОСТИ")
+    sub = tb(s, ML, Emu(1250000), TEXT_W, Emu(300000))
+    run(sub.text_frame.paragraphs[0], "ПРИКАЗ РОСТЕХНАДЗОРА ОТ 15.12.2020 № 536", 12, True, GRAY)
+    slide_num(s, 2, Emu(2800000))
+    body = tb(s, Emu(900000), Emu(3000000), Emu(10400000), Emu(2500000), PP_ALIGN.CENTER)
+    run(body.text_frame.paragraphs[0],
+        "Об утверждении федеральных норм и правил в области промышленной "
+        "безопасности «Правила промышленной безопасности при использовании "
+        "оборудования, работающего под избыточным давлением» (далее — ФНП).",
+        14, False, DARK)
+
     content_slide(
-        prs, 2,
-        "Нормативная база",
-        "Федеральные нормы и правила",
-        "Приказ Ростехнадзора от 15.12.2020 № 536",
-        body=(
-            "Об утверждении федеральных норм и правил в области промышленной "
-            "безопасности «Правила промышленной безопасности при использовании "
-            "оборудования, работающего под избыточным давлением» (далее — ФНП)."
-        ),
+        prs, 3, "ОБЩИЕ ПОЛОЖЕНИЯ", intro=None,
+        body="ФНП устанавливают требования промышленной безопасности при "
+             "разработке, размещении, монтаже, наладке, эксплуатации, ремонте, "
+             "реконструкции, техническом освидетельствовании и диагностировании "
+             "оборудования, работающего под избыточным давлением.",
+        image=f"{IMG}/industrial_steam_sidebar.png",
     )
 
     content_slide(
-        prs, 3,
-        "Общие положения",
-        "Назначение ФНП",
-        "Требования промышленной безопасности при эксплуатации оборудования под давлением",
-        body=(
-            "ФНП устанавливают единые требования к безопасной эксплуатации "
-            "оборудования, работающего под избыточным давлением, и распространяются "
-            "на проектирование, монтаж, наладку, эксплуатацию, ремонт, "
-            "реконструкцию и техническое освидетельствование такого оборудования."
-        ),
-    )
-
-    content_slide(
-        prs, 4,
-        "Общие положения",
-        "Область применения ФНП",
-        "Требования обязательны при следующих видах работ",
+        prs, 4, "ОБЩИЕ ПОЛОЖЕНИЯ",
+        "ФНП устанавливают требования промышленной безопасности, обязательные:",
         items=[
             "при разработке технологических процессов",
-            "техническом перевооружении опасного производственного объекта (ОПО)",
-            "при размещении, монтаже и ремонте",
-            "реконструкции (модернизации) оборудования",
-            "наладке и эксплуатации",
-            "техническом освидетельствовании",
-            "техническом диагностировании и экспертизе промышленной безопасности",
+            "при техническом перевооружении опасного производственного объекта (далее — ОПО)",
+            "при размещении",
+            "при монтаже",
+            "при ремонте",
+            "при реконструкции (модернизации)",
+            "при наладке и эксплуатации",
+            "при техническом освидетельствовании",
+            "при техническом диагностировании и экспертизе промышленной безопасности "
+            "оборудования, работающего под избыточным давлением",
         ],
+        image=f"{IMG}/pipeline_system_intro.png",
     )
 
     content_slide(
-        prs, 5,
-        "Общие положения",
-        "К какому оборудованию применяются ФНП",
-        "Оборудование, работающее под избыточным давлением",
+        prs, 5, "ОБЩИЕ ПОЛОЖЕНИЯ",
+        "ФНП распространяются на следующее оборудование, работающее под избыточным давлением:",
         items=[
             "паровые и водогрейные котлы",
             "сосуды, работающие под давлением",
             "трубопроводы пара и горячей воды",
-            "газовые баллоны и резервуары для сжатых газов",
-            "арматура и предохранительные устройства",
+            "газовые баллоны",
+            "резервуары для сжатых газов",
+            "арматуру и предохранительные устройства",
         ],
-        note="ФНП обязательны для всех стадий жизненного цикла оборудования под давлением.",
+        image=f"{IMG}/industrial_steam_sidebar.png",
     )
 
     content_slide(
-        prs, 6,
-        "Устройство трубопроводов",
-        "Конструкция трубопроводов пара и горячей воды",
-        "Назначение и общие требования к устройству",
-        body=(
-            "Трубопроводы пара и горячей воды предназначены для транспортировки "
-            "теплоносителя от источника тепла к потребителям. Конструкция должна "
-            "обеспечивать прочность, герметичность, компенсацию температурных "
-            "деформаций, возможность дренажа и отвода воздуха, а также безопасную "
-            "эксплуатацию в заданных параметрах давления и температуры."
-        ),
+        prs, 6, "УСТРОЙСТВО ТРУБОПРОВОДОВ", intro=None,
+        subtitle="КОНСТРУКЦИЯ ТРУБОПРОВОДОВ ПАРА И ГОРЯЧЕЙ ВОДЫ",
+        body="Трубопроводы пара и горячей воды предназначены для транспортировки "
+             "теплоносителя от источника тепла к потребителям. Конструкция должна "
+             "обеспечивать прочность, герметичность, компенсацию температурных "
+             "деформаций и безопасную эксплуатацию.",
+        image=f"{IMG}/pipeline_system_intro.png",
     )
 
     content_slide(
-        prs, 7,
-        "Устройство трубопроводов",
-        "Состав трубопровода (1/2)",
-        "Трубопровод состоит из основных элементов",
+        prs, 7, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Трубопровод состоит из:",
         items=[
-            "плотно соединённых между собой прямых участков труб",
-            "фасонных деталей — отводы, переходники, тройники",
-            "крепёжных элементов — фланцы, болты, шпильки",
-            "арматуры — краны, вентили, задвижки, регулирующие клапаны",
-            "редуцирующих и предохранительных клапанов",
+            "Плотно соединённых между собой прямых участков труб",
+            "Фасонных деталей — отводы, переходники, тройники",
+            "Крепёжных элементов — фланцы, болты, шпильки",
+            "Арматуры — краны, вентили, задвижки, регулирующие клапаны",
+            "Редуцирующих и предохранительных клапанов",
         ],
+        image=f"{IMG}/pipeline_assembly_3d.png",
     )
 
     content_slide(
-        prs, 8,
-        "Устройство трубопроводов",
-        "Приборы КИПиА",
-        "Контрольно-измерительные приборы и автоматика",
-        items=[
-            "манометры — контроль давления в трубопроводе",
-            "термометры — контроль температуры теплоносителя",
-            "расходомеры — учёт и контроль расхода среды",
-            "диафрагмы — измерение расхода по перепаду давления",
-        ],
-        note="Приборы КИПиА обеспечивают контроль параметров и безопасную эксплуатацию.",
+        prs, 8, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Трубопровод состоит из: 6. Приборы КИПиА — манометры, термометры, расходомеры, диафрагмы.",
+        note_item="6.",
+        body="На трубопроводах устанавливаются приборы контроля и автоматики для "
+             "измерения давления, температуры и расхода теплоносителя.",
+        image=f"{IMG}/kipia_instruments.png",
+        image_bottom=True,
     )
 
     content_slide(
-        prs, 9,
-        "Устройство трубопроводов",
-        "Опорно-подвесная система",
-        "Крепление и поддержание трубопровода",
+        prs, 9, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Трубопровод состоит из: 7. Опорно-подвесной системы",
+        note_item="7.",
         items=[
             "неподвижные опоры — фиксируют положение трубопровода",
-            "подвижные опоры — допускают перемещение при температурных деформациях",
-            "скользящие, катковые и подвесные опоры",
-            "пружинные и жёсткие подвески",
-            "направляющие и ограничители перемещения",
+            "подвижные опоры — обеспечивают перемещение при температурных деформациях",
+            "опоры скольжения, катковые, роликовые",
+            "опоры подвесные, пружинные и жёсткие подвески",
         ],
+        image=f"{IMG}/pipe_supports_3d.png",
     )
 
     content_slide(
-        prs, 10,
-        "Устройство трубопроводов",
-        "Конденсатоотводчики, дренажи и патрубки",
-        "Устройства для отвода конденсата и воздуха",
-        body=(
-            "В нижних точках каждого отключаемого задвижками участка трубопровода "
-            "должны предусматриваться спускные штуцера с запорной арматурой для "
-            "опорожнения. В верхних точках устанавливаются воздушники. Нижние "
-            "концевые точки паропроводов и изгибов снабжаются устройствами для "
-            "продувки. Непрерывный отвод конденсата через конденсационные горшки "
-            "или другие устройства обязателен для паропроводов насыщенного пара "
-            "и тупиковых участков паропроводов перегретого пара."
-        ),
+        prs, 10, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Трубопровод состоит из: 8. Конденсатоотводчиков — дренажи, патрубки",
+        note_item="8.",
+        body="В нижних точках каждого отключаемого задвижками участка трубопровода "
+             "должны предусматриваться спускные штуцера с запорной арматурой для "
+             "опорожнения. В верхних точках устанавливаются воздушники. Нижние "
+             "концевые точки паропроводов и изгибов снабжаются устройствами для "
+             "продувки. Непрерывный отвод конденсата обязателен для паропроводов "
+             "насыщенного пара и тупиковых участков паропроводов перегретого пара.",
+        image=f"{IMG}/condensate_drainage.png",
     )
 
     content_slide(
-        prs, 11,
-        "Устройство трубопроводов",
-        "Компенсаторы температурных деформаций",
-        "Для компенсации удлинения трубопровода при нагреве",
+        prs, 11, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Для компенсации удлинения трубопровода при нагреве:",
         highlight=[
             ("При нагреве трубопровода на ", False, DARK),
             ("100 °C", True, RED),
@@ -319,50 +338,54 @@ def main():
             "линзовые компенсаторы",
             "сальниковые компенсаторы",
         ],
+        image=f"{IMG}/compensators_7types.png",
     )
 
     content_slide(
-        prs, 12,
-        "Устройство трубопроводов",
-        "Заглушки",
-        "Элементы для глухого запечатывания выходных отверстий",
-        body=(
-            "Заглушка — элемент трубопровода, предназначенный для глухого "
-            "запечатывания его выходных отверстий; как правило используется при "
-            "проведении пневмо- и гидроиспытаний. Металлические концевые заглушки "
-            "различаются по виду исполнения и типу крепления."
-        ),
-        note="Типы: плоские сварные, фланцевые, эллиптические, сферические, быстросъёмные, межфланцевые.",
-    )
-
-    content_slide(
-        prs, 13,
-        "Устройство трубопроводов",
-        "Теплоизоляция",
-        "Защита от потерь тепла и ожогов",
-        body=(
-            "Теплоизоляция трубопроводов предназначена для снижения теплопотерь, "
-            "предотвращения конденсации влаги на поверхности, защиты персонала от "
-            "термических ожогов и обеспечения стабильности технологических "
-            "параметров. Применяются минераловатные, пенополиуретановые и другие "
-            "изоляционные материалы с защитной оболочкой."
-        ),
-    )
-
-    content_slide(
-        prs, 14,
-        "Устройство трубопроводов",
-        "Опознавательная окраска",
-        "Маркировка трубопроводов по ГОСТ 14202-69",
+        prs, 12, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Трубопровод состоит из: 10. Заглушек",
+        note_item="10.",
+        body="Заглушка — элемент трубопровода, предназначенный для глухого "
+             "запечатывания его выходных отверстий; как правило используется при "
+             "проведении пневмо- и гидроиспытаний. Металлические концевые заглушки "
+             "различаются по виду исполнения и типу крепления.",
         items=[
-            "коммуникации делятся на 10 основных групп по транспортируемым веществам",
-            "зелёный цвет — 1 группа, транспортирует воду",
-            "красный цвет — 2 группа, транспортирует пар",
+            "плоские заглушки, закрепляемые сваркой",
+            "фланцевые стальные (1)",
+            "эллиптические (2)",
+            "сферические",
+            "быстросъёмные (3)",
+            "межфланцевые (4)",
+        ],
+        image=f"{IMG}/pipe_caps_4types.png",
+    )
+
+    content_slide(
+        prs, 13, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Трубопровод состоит из: 11. Теплоизоляции",
+        note_item="11.",
+        body="Теплоизоляция трубопроводов предназначена для снижения теплопотерь, "
+             "предотвращения конденсации влаги на поверхности, защиты персонала от "
+             "термических ожогов и обеспечения стабильности технологических "
+             "параметров. Применяются минераловатные и другие материалы с защитной оболочкой.",
+        image=f"{IMG}/thermal_insulation_cutaway.png",
+    )
+
+    content_slide(
+        prs, 14, "УСТРОЙСТВО ТРУБОПРОВОДОВ",
+        "Трубопровод состоит из: 12. Опознавательной окраски",
+        note_item="12.",
+        body="Коммуникации делятся на 10 основных групп по транспортируемым веществам, "
+             "что требует их идентификации и маркировки.",
+        items=[
+            "Цветовая градация при разметке трубопроводов (ГОСТ 14202-69)",
+            "зелёный цвет соответствует 1 группе, транспортирует воду",
+            "красный цвет соответствует 2 группе, транспортирует пар",
             "предупреждающие кольца: красные — легковоспламеняющиеся и взрывоопасные",
             "жёлтые — токсичные и радиоактивные вещества",
             "зелёные с белой каймой — внутренняя безопасность",
         ],
-        note="Количество предупреждающих колец зависит от давления и температуры среды.",
+        image=f"{IMG}/pipe_identification_gost.png",
     )
 
     prs.save(OUT)
