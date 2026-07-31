@@ -2,16 +2,13 @@
 """Rebuild welding presentation with proper red Inter list layout."""
 
 from copy import deepcopy
-from pathlib import Path
-
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from pptx.enum.shapes import MSO_SHAPE
-from pptx.util import Emu, Inches, Pt
+from pptx.util import Emu, Pt
 
-TEMPLATE = "/home/ubuntu/.cursor/projects/workspace/uploads/____________54c7.pptx"
+# Visual reference: same clean red Inter layout as presentation 4
+TEMPLATE = "/workspace/Презентация_4_обновленная.pptx"
 OUT = "/workspace/Презентация_Сварочные_работы.pptx"
-IMG = Path("/workspace/assets/welding_images")
 
 RED = RGBColor(0xE3, 0x06, 0x13)
 DARK = RGBColor(0x1A, 0x1A, 0x1A)
@@ -42,13 +39,6 @@ def is_bg(shape):
     return shape.top < Emu(50000) and (shape.width or 0) > Emu(10000000)
 
 
-def is_accent_bar(shape):
-    """Thin left red bar added for branding."""
-    if shape.left is None or shape.width is None:
-        return False
-    return shape.left < Emu(20000) and shape.width < Emu(200000)
-
-
 def is_footer(shape):
     return (
         shape.top is not None
@@ -62,7 +52,7 @@ def content_shapes(slide):
     shapes = [
         s
         for s in slide.shapes
-        if s.has_text_frame and not is_bg(s) and not is_footer(s) and not is_accent_bar(s)
+        if s.has_text_frame and not is_bg(s) and not is_footer(s)
     ]
     return sorted(shapes, key=lambda s: (s.top or 0, s.left or 0))
 
@@ -83,24 +73,12 @@ def make_slide(prs, shape_elements):
     return slide
 
 
-def add_red_bar(slide):
-    """Thin left accent bar — signature of the red template look."""
-    bar = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE, Emu(0), Emu(0), Emu(90000), Emu(6858000)
-    )
-    bar.fill.solid()
-    bar.fill.fore_color.rgb = RED
-    bar.line.fill.background()
-    if bar.has_text_frame:
-        bar.text_frame.clear()
-
-
 def update_pages(prs):
     total = len(prs.slides)
     for i, slide in enumerate(prs.slides, 1):
         updated = False
         for sh in slide.shapes:
-            if not sh.has_text_frame or is_bg(sh) or is_accent_bar(sh):
+            if not sh.has_text_frame or is_bg(sh):
                 continue
             if is_footer(sh):
                 set_text(sh, f"{i:02d} / {total:02d}", 9, True, RED)
@@ -125,11 +103,11 @@ def fill_text_slide(slide, section, title, intro, body, note=None):
     for sh in shapes:
         set_text(sh, "", 12, False, DARK)
     set_text(shapes[0], section, 11, True, RED)
-    set_text(shapes[1], title, 26, True, DARK)
-    set_text(shapes[2], intro, 13, False, GRAY)
+    set_text(shapes[1], title, 30, True, DARK)
+    set_text(shapes[2], intro, 16, False, GRAY)
     set_text(shapes[3], body, 14, False, DARK)
     if len(shapes) > 4:
-        set_text(shapes[4], note or "", 13, True, AMBER if note else GRAY)
+        set_text(shapes[4], note or "", 14, True, AMBER if note else GRAY)
 
 
 def fill_list_slide(slide, section, title, intro, list_title, items, note=None, start_num=1):
@@ -190,17 +168,17 @@ def fill_list_slide(slide, section, title, intro, list_title, items, note=None, 
             set_text(sh, "", 12, False, DARK)
 
     set_text(hdr_candidates[0], section, 11, True, RED)
-    set_text(hdr_candidates[1], title, 24, True, DARK)
-    set_text(hdr_candidates[2], intro, 13, False, GRAY)
-    set_text(hdr_candidates[3], list_title, 12, True, RED)
+    set_text(hdr_candidates[1], title, 30, True, DARK)
+    set_text(hdr_candidates[2], intro, 16, False, GRAY)
+    set_text(hdr_candidates[3], list_title, 11, True, RED)
 
     for i, item in enumerate(items):
         if i >= len(pairs):
             break
         num_sh, txt_sh = pairs[i]
-        set_text(num_sh, f"{start_num + i:02d}", 16, True, RED)
+        set_text(num_sh, f"{start_num + i:02d}", 14, True, RED)
         if txt_sh is not None:
-            set_text(txt_sh, item, 13, False, DARK)
+            set_text(txt_sh, item, 14, False, DARK)
     for i in range(len(items), len(pairs)):
         set_text(pairs[i][0], "", 16, True, RED)
         if pairs[i][1] is not None:
@@ -218,20 +196,6 @@ def fill_list_slide(slide, section, title, intro, list_title, items, note=None, 
             )
             set_text(box, note, 12, True, AMBER)
 
-
-def add_image(slide, path, side=True):
-    path = Path(path)
-    if not path.exists() or path.stat().st_size < 5000:
-        return
-    if side:
-        # Right side, below title — leave room for list on left
-        slide.shapes.add_picture(
-            str(path), Emu(7200000), Emu(2200000), width=Emu(4500000), height=Emu(3600000)
-        )
-    else:
-        slide.shapes.add_picture(
-            str(path), Emu(731520), Emu(4000000), width=Emu(10700000), height=Emu(2000000)
-        )
 
 
 def chunks(items, n=4):
@@ -266,7 +230,6 @@ def main():
         "с соблюдением нормативных требований и проектной (конструкторской) документации.",
         note="На ОПО сварку выполняют только по аттестованным технологиям.",
     )
-    add_image(s, IMG / "arc.jpg")
 
     # —— 2. Personnel ——
     s = list_slide()
@@ -300,7 +263,6 @@ def main():
         ],
         note="Без положительных результатов аттестационных испытаний к работам не допускают.",
     )
-    add_image(s, IMG / "ppe_weld.jpg")
 
     # —— 4. Technology readiness ——
     s = list_slide()
@@ -401,8 +363,6 @@ def main():
             ),
             start_num=start,
         )
-        if idx == 1:
-            add_image(s, IMG / "pipe_weld.jpg")
         start += len(part)
 
     # —— Equipment ——
@@ -420,7 +380,6 @@ def main():
             "оборудование содержат в исправном состоянии по указаниям производителя",
         ],
     )
-    add_image(s, IMG / "mig.jpg")
 
     # —— Supervisor ——
     s = list_slide()
@@ -452,7 +411,6 @@ def main():
             "условия выполнения работ соответствуют требованиям ПТД и НД",
         ],
     )
-    add_image(s, IMG / "mma.jpg")
 
     # —— Control types ——
     s = list_slide()
@@ -491,8 +449,6 @@ def main():
             part,
             start_num=start,
         )
-        if idx == 1:
-            add_image(s, IMG / "electrodes.jpg")
         start += len(part)
 
     # —— Operational (9 → 4+4+1) ——
@@ -538,7 +494,6 @@ def main():
         ],
         note="Устранение дефектов — по ПТД; после исправления — повторный контроль.",
     )
-    add_image(s, IMG / "tig.jpg")
 
     # —— Marking / repair ——
     s = list_slide()
@@ -589,10 +544,7 @@ def main():
         ],
         note="Сварка на ОПО — аттестованным персоналом, по ПТД и с полным циклом контроля.",
     )
-    add_image(s, IMG / "mpi.jpg")
 
-    for slide in prs.slides:
-        add_red_bar(slide)
     update_pages(prs)
     prs.save(OUT)
     print(f"Saved {OUT} ({len(prs.slides)} slides)")
