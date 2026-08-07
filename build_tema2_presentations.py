@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
-Сборка 5 тематических презентаций по теме
-«Оказание первой помощи при наружных кровотечениях»
-на основе исходного PDF (стр. 1–28) + доработка по Приказу Минздрава РФ № 220н
-и типовым алгоритмам первой помощи.
+Тема 2 — 5 редактируемых презентаций по наружным кровотечениям.
+Стиль: Open Sans, белый фон, без логотипов и без вставки слайдов картинками.
 """
 
 from __future__ import annotations
@@ -13,35 +11,35 @@ from pathlib import Path
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
-from pptx.oxml.ns import nsmap
-from pptx.util import Emu, Inches, Pt
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+from pptx.oxml.ns import qn
+from pptx.util import Emu, Pt
+from lxml import etree
 
-# Widescreen 16:9 (как в исходных материалах темы 1 / PDF)
-SLIDE_W = Emu(24384000)  # 13.333"
-SLIDE_H = Emu(13716000)  # 7.5"
-
-PAGES = Path("/tmp/bleed_pages")
 OUT = Path("/workspace/tema2_bleeding")
 OUT.mkdir(parents=True, exist_ok=True)
 
-# Палитра в стиле исходника
-DARK = RGBColor(0x2C, 0x2C, 0x2C)
-GRAY = RGBColor(0x55, 0x55, 0x55)
-MUTED = RGBColor(0x6F, 0x6F, 0x6F)
-LINE = RGBColor(0xB8, 0xB8, 0xB8)
-BAR = RGBColor(0xD9, 0xD9, 0xD9)
-BG = RGBColor(0xF7, 0xF7, 0xF7)
+# --- Размер ---
+SLIDE_W = Emu(24384000)  # 16:9
+SLIDE_H = Emu(13716000)
+
+# --- Цвета ---
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-ACCENT = RGBColor(0x00, 0x82, 0xB9)  # бирюзово-синий акцент из темы 1
-ALERT = RGBColor(0xC0, 0x28, 0x28)  # выделение лимитов жгута
-OK_GREEN = RGBColor(0x2E, 0x7D, 0x32)
-CREAM = RGBColor(0xF5, 0xF0, 0xE1)
-BOX_BG = RGBColor(0xEE, 0xEE, 0xEE)
+BG_SOFT = RGBColor(0xFA, 0xFA, 0xFA)
+BG_BAR = RGBColor(221, 221, 221)       # только фоновые элементы
+LINE = RGBColor(225, 225, 225)        # рамки / разделители
+TEXT = RGBColor(0x33, 0x33, 0x33)     # #333333
+BLACK = RGBColor(0x00, 0x00, 0x00)
+ACCENT_RED = RGBColor(0xCC, 0x00, 0x00)
+ACCENT_BLUE = RGBColor(0x00, 0x55, 0xAA)
+TABLE_HDR = RGBColor(0x00, 0x55, 0xAA)
+ROW_ALT = RGBColor(0xF5, 0xF5, 0xF5)
 
+FONT = "Open Sans"
 COURSE = "Тема 2 · Оказание первой помощи при наружных кровотечениях"
-SUB = "Оказание первой помощи при наружных кровотечениях"
 
+
+# ───────────────────── helpers ─────────────────────
 
 def new_prs() -> Presentation:
     prs = Presentation()
@@ -51,10 +49,24 @@ def new_prs() -> Presentation:
 
 
 def blank(prs: Presentation):
-    return prs.slides.add_slide(prs.slide_layouts[6])  # blank
+    return prs.slides.add_slide(prs.slide_layouts[6])
 
 
-def add_rect(slide, left, top, width, height, fill: RGBColor, line=None):
+def set_run_font(run, *, size, bold=False, color=TEXT):
+    run.font.name = FONT
+    run.font.size = Pt(size)
+    run.font.bold = bold
+    run.font.color.rgb = color
+    # East Asian / latin fallback hint for Open Sans
+    rPr = run._r.get_or_add_rPr()
+    for tag in ("latin", "ea", "cs"):
+        el = rPr.find(qn(f"a:{tag}"))
+        if el is None:
+            el = etree.SubElement(rPr, qn(f"a:{tag}"))
+        el.set("typeface", FONT)
+
+
+def add_rect(slide, left, top, width, height, fill: RGBColor, line: RGBColor | None = None):
     sh = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, top, width, height)
     sh.fill.solid()
     sh.fill.fore_color.rgb = fill
@@ -62,224 +74,248 @@ def add_rect(slide, left, top, width, height, fill: RGBColor, line=None):
         sh.line.fill.background()
     else:
         sh.line.color.rgb = line
+        sh.line.width = Pt(1)
     return sh
 
 
-def set_run(run, text, size=18, bold=False, color=DARK, font="Arial"):
-    run.text = text
-    run.font.size = Pt(size)
-    run.font.bold = bold
-    run.font.color.rgb = color
-    run.font.name = font
+def add_round(slide, left, top, width, height, fill: RGBColor):
+    sh = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height)
+    sh.fill.solid()
+    sh.fill.fore_color.rgb = fill
+    sh.line.fill.background()
+    return sh
 
 
-def add_textbox(slide, left, top, width, height, text, size=18, bold=False,
-                color=DARK, align=PP_ALIGN.LEFT, font="Arial", anchor=MSO_ANCHOR.TOP):
+def add_oval(slide, left, top, width, height, fill: RGBColor):
+    sh = slide.shapes.add_shape(MSO_SHAPE.OVAL, left, top, width, height)
+    sh.fill.solid()
+    sh.fill.fore_color.rgb = fill
+    sh.line.fill.background()
+    return sh
+
+
+def add_textbox(slide, left, top, width, height, text, *, size=32, bold=False,
+                color=TEXT, align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP):
     box = slide.shapes.add_textbox(left, top, width, height)
     tf = box.text_frame
     tf.word_wrap = True
-    tf.auto_size = None
     try:
-        tf._txBody.bodyPr.set("anchor", {MSO_ANCHOR.TOP: "t", MSO_ANCHOR.MIDDLE: "ctr",
-                                         MSO_ANCHOR.BOTTOM: "b"}[anchor])
+        tf._txBody.bodyPr.set(
+            "anchor",
+            {MSO_ANCHOR.TOP: "t", MSO_ANCHOR.MIDDLE: "ctr", MSO_ANCHOR.BOTTOM: "b"}[anchor],
+        )
     except Exception:
         pass
     p = tf.paragraphs[0]
     p.alignment = align
     run = p.add_run()
-    set_run(run, text, size=size, bold=bold, color=color, font=font)
+    run.text = text
+    set_run_font(run, size=size, bold=bold, color=color)
     return box
 
 
-def add_bullets(slide, left, top, width, height, items, size=16, color=DARK,
-                bold_prefix=False, alert_items=None):
-    """items: list[str]. alert_items: set of indices to paint in ALERT/bold."""
-    alert_items = alert_items or set()
+def chrome(slide):
+    """Белый фон + тонкая верхняя полоса (не логотип)."""
+    add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, WHITE)
+    add_rect(slide, 0, 0, SLIDE_W, Emu(120000), BG_BAR)
+
+
+def title_bar(slide, title: str, subtitle: str | None = None):
+    chrome(slide)
+    add_textbox(
+        slide, Emu(800000), Emu(350000), Emu(22800000), Emu(1000000),
+        title, size=46, bold=True, color=TEXT, align=PP_ALIGN.LEFT,
+    )
+    add_rect(slide, Emu(800000), Emu(1450000), Emu(22800000), Emu(20000), LINE)
+    if subtitle:
+        add_textbox(
+            slide, Emu(800000), Emu(1550000), Emu(22800000), Emu(600000),
+            subtitle, size=26, bold=True, color=ACCENT_BLUE, align=PP_ALIGN.LEFT,
+        )
+        return Emu(2300000)  # content top
+    return Emu(1750000)
+
+
+def bullets(slide, left, top, width, height, items: list[str], *, size=32,
+            alert_idx: set[int] | None = None):
+    alert_idx = alert_idx or set()
     box = slide.shapes.add_textbox(left, top, width, height)
     tf = box.text_frame
     tf.word_wrap = True
     for i, item in enumerate(items):
         p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
         p.alignment = PP_ALIGN.LEFT
+        p.space_after = Pt(10)
         p.level = 0
-        p.space_after = Pt(6)
         run = p.add_run()
-        is_alert = i in alert_items or item.startswith("⚠") or "60 мин" in item or "30 мин" in item
-        prefix = "•  "
-        set_run(run, prefix + item, size=size, bold=is_alert or bold_prefix,
-                color=ALERT if is_alert else color)
+        is_alert = i in alert_idx
+        run.text = f"•  {item}"
+        set_run_font(
+            run,
+            size=size,
+            bold=is_alert,
+            color=ACCENT_RED if is_alert else TEXT,
+        )
     return box
 
 
-def chrome(slide, page_no: int | None = None, eyebrow: str | None = None):
-    """Фон + левая полоса номера + правая декоративная полоса."""
-    add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, BG)
-    # правая вертикальная полоса (как в титуле исходника)
-    add_rect(slide, Emu(23000000), 0, Emu(1384000), SLIDE_H, BAR)
-    if page_no is not None:
-        add_rect(slide, Emu(0), Emu(5600000), Emu(700000), Emu(700000), RGBColor(0x4D, 0x4D, 0x4D))
-        add_textbox(slide, Emu(0), Emu(5680000), Emu(700000), Emu(550000),
-                    str(page_no), size=18, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
-                    anchor=MSO_ANCHOR.MIDDLE)
-    if eyebrow:
-        add_textbox(slide, Emu(900000), Emu(1450000), Emu(20000000), Emu(350000),
-                    eyebrow, size=12, color=MUTED)
+def add_icon_circle(slide, left, top, size, label: str, fill=ACCENT_BLUE):
+    """Минималистичная «иконка»: круг + буква/цифра."""
+    add_oval(slide, left, top, size, size, fill)
+    add_textbox(
+        slide, left, top, size, size, label,
+        size=20, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE,
+    )
 
 
-def title_block(slide, title: str, subtitle: str | None = SUB):
-    add_textbox(slide, Emu(900000), Emu(500000), Emu(21000000), Emu(900000),
-                title, size=28, bold=True, color=DARK)
-    # underline
-    add_rect(slide, Emu(900000), Emu(1350000), Emu(20000000), Emu(25000), LINE)
-    if subtitle:
-        add_textbox(slide, Emu(900000), Emu(1450000), Emu(20000000), Emu(350000),
-                    subtitle, size=12, color=MUTED)
+def add_flow_step(slide, left, top, width, height, num: str, text: str, accent=False):
+    fill = ACCENT_BLUE if accent else BG_BAR
+    add_round(slide, left, top, width, height, fill)
+    add_textbox(
+        slide, left + Emu(80000), top + Emu(60000), Emu(500000), height - Emu(120000),
+        num, size=24, bold=True, color=WHITE if accent else TEXT, anchor=MSO_ANCHOR.MIDDLE,
+    )
+    add_textbox(
+        slide, left + Emu(600000), top + Emu(80000), width - Emu(700000), height - Emu(160000),
+        text, size=20, bold=False, color=WHITE if accent else TEXT, anchor=MSO_ANCHOR.MIDDLE,
+    )
 
 
-def add_image_slide(prs: Presentation, png: Path, page_no: int | None = None):
-    """Полноэкранный слайд с исходной страницей PDF."""
-    slide = blank(prs)
-    # картинка на весь слайд
-    slide.shapes.add_picture(str(png), 0, 0, width=SLIDE_W, height=SLIDE_H)
-    return slide
+def add_arrow_right(slide, left, top):
+    sh = slide.shapes.add_shape(MSO_SHAPE.RIGHT_ARROW, left, top, Emu(400000), Emu(250000))
+    sh.fill.solid()
+    sh.fill.fore_color.rgb = ACCENT_BLUE
+    sh.line.fill.background()
 
 
-def add_title_slide(prs: Presentation, title: str, subtitle: str, meta: str):
-    slide = blank(prs)
-    add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, BG)
-    add_rect(slide, 0, Emu(2800000), Emu(3500000), Emu(2200000), BAR)
-    add_rect(slide, Emu(23000000), 0, Emu(1384000), SLIDE_H, BAR)
-    add_textbox(slide, Emu(900000), Emu(3000000), Emu(20000000), Emu(1800000),
-                title.upper(), size=32, bold=True, color=DARK)
-    add_rect(slide, Emu(900000), Emu(4900000), Emu(16000000), Emu(25000), DARK)
-    add_textbox(slide, Emu(900000), Emu(5100000), Emu(20000000), Emu(500000),
-                subtitle, size=16, color=GRAY)
-    add_textbox(slide, Emu(900000), Emu(5800000), Emu(20000000), Emu(400000),
-                meta, size=12, color=MUTED)
-    return slide
-
-
-def add_toc_slide(prs: Presentation, title: str, items: list[str], page_no: int = 2):
-    slide = blank(prs)
-    chrome(slide, page_no=page_no, eyebrow=COURSE)
-    title_block(slide, "СОДЕРЖАНИЕ", SUB)
-    # numbered cards
-    y = Emu(2000000)
-    for i, item in enumerate(items, 1):
-        add_rect(slide, Emu(900000), y, Emu(700000), Emu(700000), ACCENT)
-        add_textbox(slide, Emu(900000), y, Emu(700000), Emu(700000),
-                    str(i), size=22, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
-                    anchor=MSO_ANCHOR.MIDDLE)
-        add_rect(slide, Emu(1700000), y, Emu(19000000), Emu(700000), WHITE, line=LINE)
-        add_textbox(slide, Emu(2000000), y, Emu(18000000), Emu(700000),
-                    item, size=18, color=DARK, anchor=MSO_ANCHOR.MIDDLE)
-        y = Emu(y + 950000)
-    return slide
-
-
-def add_content_slide(prs: Presentation, title: str, bullets: list[str],
-                      page_no: int, note: str | None = None,
-                      alert_indices: set | None = None,
-                      two_cols: tuple[list[str], list[str]] | None = None,
-                      highlight_box: str | None = None):
-    slide = blank(prs)
-    chrome(slide, page_no=page_no)
-    title_block(slide, title, SUB)
-    if two_cols:
-        left, right = two_cols
-        add_rect(slide, Emu(900000), Emu(1950000), Emu(10000000), Emu(8500000), WHITE, line=LINE)
-        add_rect(slide, Emu(11500000), Emu(1950000), Emu(10000000), Emu(8500000), WHITE, line=LINE)
-        add_bullets(slide, Emu(1100000), Emu(2150000), Emu(9500000), Emu(8000000), left, size=15)
-        add_bullets(slide, Emu(11700000), Emu(2150000), Emu(9500000), Emu(8000000), right, size=15)
-    else:
-        add_bullets(slide, Emu(900000), Emu(2000000), Emu(20500000), Emu(7500000),
-                    bullets, size=17, alert_items=alert_indices)
-    if highlight_box:
-        add_rect(slide, Emu(900000), Emu(10500000), Emu(20500000), Emu(1800000), CREAM)
-        add_textbox(slide, Emu(1100000), Emu(10800000), Emu(20000000), Emu(1400000),
-                    highlight_box, size=14, bold=True, color=ALERT)
-    if note:
-        add_textbox(slide, Emu(900000), Emu(12200000), Emu(20500000), Emu(800000),
-                    note, size=11, color=MUTED)
-    return slide
-
-
-def add_table_slide(prs: Presentation, title: str, headers: list[str],
-                    rows: list[list[str]], page_no: int):
-    slide = blank(prs)
-    chrome(slide, page_no=page_no)
-    title_block(slide, title, SUB)
-    cols = len(headers)
-    rows_n = len(rows) + 1
-    table = slide.shapes.add_table(rows_n, cols, Emu(900000), Emu(2000000),
-                                   Emu(20500000), Emu(min(900000 * rows_n, 9000000))).table
+def add_table(slide, left, top, width, height, headers: list[str], rows: list[list[str]],
+              font_size=24):
+    n_rows = len(rows) + 1
+    n_cols = len(headers)
+    table = slide.shapes.add_table(n_rows, n_cols, left, top, width, height).table
     for c, h in enumerate(headers):
         cell = table.cell(0, c)
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = TABLE_HDR
         cell.text = h
         for p in cell.text_frame.paragraphs:
+            p.alignment = PP_ALIGN.LEFT
             for r in p.runs:
-                r.font.bold = True
-                r.font.size = Pt(13)
-                r.font.color.rgb = WHITE
-                r.font.name = "Arial"
-        # header fill
-        cell.fill.solid()
-        cell.fill.fore_color.rgb = ACCENT
+                set_run_font(r, size=font_size, bold=True, color=WHITE)
     for ri, row in enumerate(rows, 1):
         for c, val in enumerate(row):
             cell = table.cell(ri, c)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = ROW_ALT if ri % 2 == 0 else WHITE
             cell.text = val
+            alert = any(k in val for k in ("60", "30", "Алый", "Пульсир", "Критическ", "НЕ "))
             for p in cell.text_frame.paragraphs:
+                p.alignment = PP_ALIGN.LEFT
                 for r in p.runs:
-                    r.font.size = Pt(12)
-                    r.font.color.rgb = DARK
-                    r.font.name = "Arial"
-                    if "60" in val or "30" in val or "алый" in val.lower() or "пульсир" in val.lower():
-                        r.font.bold = True
-                        if "алый" in val.lower() or "пульсир" in val.lower() or "струёй" in val.lower():
-                            r.font.color.rgb = ALERT
-            if ri % 2 == 0:
-                cell.fill.solid()
-                cell.fill.fore_color.rgb = RGBColor(0xF0, 0xF0, 0xF0)
+                    set_run_font(
+                        r,
+                        size=font_size,
+                        bold=alert,
+                        color=ACCENT_RED if alert else TEXT,
+                    )
+    return table
+
+
+def title_slide(prs, title: str, point: str):
+    slide = blank(prs)
+    chrome(slide)
+    add_rect(slide, 0, Emu(4200000), SLIDE_W, Emu(2800000), BG_SOFT)
+    add_textbox(
+        slide, Emu(800000), Emu(4600000), Emu(22800000), Emu(1400000),
+        title.upper(), size=46, bold=True, color=TEXT,
+    )
+    add_rect(slide, Emu(800000), Emu(6200000), Emu(12000000), Emu(20000), ACCENT_BLUE)
+    add_textbox(
+        slide, Emu(800000), Emu(6500000), Emu(22800000), Emu(600000),
+        point, size=26, bold=False, color=ACCENT_BLUE,
+    )
+    add_textbox(
+        slide, Emu(800000), Emu(7200000), Emu(22800000), Emu(500000),
+        COURSE, size=20, bold=False, color=TEXT,
+    )
     return slide
 
 
-def add_summary_slide(prs: Presentation, points: list[str], page_no: int):
+def toc_slide(prs, items: list[str]):
     slide = blank(prs)
-    chrome(slide, page_no=page_no)
-    title_block(slide, "КРАТКОЕ РЕЗЮМЕ", SUB)
-    y = Emu(2000000)
-    for i, pt in enumerate(points, 1):
-        add_rect(slide, Emu(900000), y, Emu(20500000), Emu(1400000), WHITE, line=LINE)
-        add_rect(slide, Emu(900000), y, Emu(120000), Emu(1400000), ACCENT)
-        add_textbox(slide, Emu(1300000), y + Emu(350000), Emu(19000000), Emu(800000),
-                    pt, size=16, color=DARK, anchor=MSO_ANCHOR.MIDDLE)
-        y = Emu(y + 1650000)
+    y0 = title_bar(slide, "Содержание")
+    y = y0 + Emu(200000)
+    for i, item in enumerate(items, 1):
+        add_round(slide, Emu(800000), y, Emu(900000), Emu(900000), ACCENT_BLUE)
+        add_textbox(
+            slide, Emu(800000), y, Emu(900000), Emu(900000),
+            str(i), size=32, bold=True, color=WHITE,
+            align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE,
+        )
+        add_rect(slide, Emu(1900000), y, Emu(20500000), Emu(900000), WHITE, line=LINE)
+        add_textbox(
+            slide, Emu(2200000), y, Emu(19500000), Emu(900000),
+            item, size=32, bold=False, color=TEXT, anchor=MSO_ANCHOR.MIDDLE,
+        )
+        y += Emu(1200000)
     return slide
 
 
-def add_thanks_slide(prs: Presentation):
+def content_slide(prs, title: str, items: list[str], *, subtitle: str | None = None,
+                  alert_idx: set[int] | None = None, highlight: str | None = None):
     slide = blank(prs)
-    add_rect(slide, 0, 0, SLIDE_W, SLIDE_H, BG)
-    add_rect(slide, Emu(23000000), 0, Emu(1384000), SLIDE_H, BAR)
-    add_textbox(slide, Emu(900000), Emu(5200000), Emu(20000000), Emu(1000000),
-                "БЛАГОДАРИМ ЗА ВНИМАНИЕ", size=36, bold=True, color=DARK,
-                align=PP_ALIGN.LEFT)
-    add_rect(slide, Emu(900000), Emu(6400000), Emu(10000000), Emu(25000), DARK)
-    add_textbox(slide, Emu(900000), Emu(6700000), Emu(20000000), Emu(500000),
-                COURSE, size=14, color=MUTED)
+    y0 = title_bar(slide, title, subtitle)
+    h = Emu(8500000) if not highlight else Emu(7000000)
+    bullets(slide, Emu(800000), y0 + Emu(200000), Emu(22800000), h, items,
+            size=32, alert_idx=alert_idx)
+    if highlight:
+        add_round(slide, Emu(800000), Emu(11000000), Emu(22800000), Emu(1800000), BG_SOFT)
+        add_rect(slide, Emu(800000), Emu(11000000), Emu(120000), Emu(1800000), ACCENT_RED)
+        add_textbox(
+            slide, Emu(1200000), Emu(11300000), Emu(21800000), Emu(1400000),
+            highlight, size=26, bold=True, color=ACCENT_RED, anchor=MSO_ANCHOR.MIDDLE,
+        )
     return slide
 
 
-def add_section_divider(prs: Presentation, title: str, page_no: int):
+def summary_slide(prs, points: list[str]):
     slide = blank(prs)
-    chrome(slide, page_no=page_no)
-    add_textbox(slide, Emu(900000), Emu(5000000), Emu(20000000), Emu(1200000),
-                title.upper(), size=30, bold=True, color=DARK)
-    add_rect(slide, Emu(900000), Emu(6400000), Emu(12000000), Emu(25000), ACCENT)
-    add_textbox(slide, Emu(900000), Emu(6700000), Emu(20000000), Emu(500000),
-                "Исходный материал · доработано по стандартам первой помощи",
-                size=12, color=MUTED)
+    y0 = title_bar(slide, "Краткое резюме")
+    y = y0 + Emu(200000)
+    for pt in points:
+        add_rect(slide, Emu(800000), y, Emu(22800000), Emu(1600000), WHITE, line=LINE)
+        add_rect(slide, Emu(800000), y, Emu(120000), Emu(1600000), ACCENT_BLUE)
+        add_textbox(
+            slide, Emu(1200000), y + Emu(300000), Emu(21800000), Emu(1100000),
+            pt, size=26, bold=False, color=TEXT, anchor=MSO_ANCHOR.MIDDLE,
+        )
+        y += Emu(1900000)
+    return slide
+
+
+def thanks_slide(prs):
+    slide = blank(prs)
+    chrome(slide)
+    add_textbox(
+        slide, Emu(800000), Emu(5500000), Emu(22800000), Emu(1200000),
+        "Спасибо за внимание", size=46, bold=True, color=TEXT,
+    )
+    add_rect(slide, Emu(800000), Emu(6900000), Emu(10000000), Emu(20000), ACCENT_BLUE)
+    add_textbox(
+        slide, Emu(800000), Emu(7200000), Emu(22800000), Emu(500000),
+        COURSE, size=20, bold=False, color=TEXT,
+    )
+    return slide
+
+
+def section_slide(prs, title: str):
+    slide = blank(prs)
+    chrome(slide)
+    add_textbox(
+        slide, Emu(800000), Emu(5500000), Emu(22800000), Emu(1200000),
+        title, size=46, bold=True, color=TEXT,
+    )
+    add_rect(slide, Emu(800000), Emu(6900000), Emu(12000000), Emu(20000), ACCENT_BLUE)
     return slide
 
 
@@ -287,694 +323,716 @@ def add_section_divider(prs: Presentation, title: str, page_no: int):
 
 def build_pres1():
     prs = new_prs()
-    add_title_slide(
+    title_slide(
         prs,
         "Кровотечение и обзорный осмотр пострадавшего",
-        "Теоретический модуль · п. 2.1 Приложения № 2 к ПП РФ № 2464",
-        "Курс первой помощи · Тема 2",
+        "Теоретический модуль · п. 2.1",
     )
-    add_toc_slide(prs, "Содержание", [
-        "Определение кровотечения и признаки острой кровопотери",
+    toc_slide(prs, [
+        "Определение кровотечения и признаки кровопотери",
         "Цель и порядок обзорного осмотра",
-        "Обзорный и подробный осмотр: в чём различие",
+        "Обзорный и подробный осмотр: различия",
         "Когда обзорный осмотр критически важен",
-    ], page_no=2)
+    ])
 
-    # исходный слайд: определение + признаки
-    add_image_slide(prs, PAGES / "page_02.png")
+    content_slide(prs, "Понятие «кровотечение»", [
+        "Кровотечение — выход крови из сосудистого русла.",
+        "Приводит к острой кровопотере и угрозе жизни.",
+        "Наружное кровотечение видно снаружи (рана, истечение крови).",
+        "Требует немедленной временной остановки.",
+    ])
 
-    add_content_slide(
-        prs,
-        "ЧТО ТАКОЕ ОБЗОРНЫЙ ОСМОТР",
+    # Признаки с иконками-кругами
+    slide = blank(prs)
+    y0 = title_bar(slide, "Основные признаки острой кровопотери")
+    signs = [
+        ("1", "Слабость, жажда, головокружение"),
+        ("2", "«Мушки» перед глазами, обморок"),
+        ("3", "Бледная, влажная, холодная кожа"),
+        ("4", "Учащённое сердцебиение"),
+        ("5", "Частое дыхание"),
+        ("6", "Возбуждение → апатия"),
+    ]
+    positions = [
+        (Emu(800000), y0 + Emu(300000)),
+        (Emu(8500000), y0 + Emu(300000)),
+        (Emu(16200000), y0 + Emu(300000)),
+        (Emu(800000), y0 + Emu(4200000)),
+        (Emu(8500000), y0 + Emu(4200000)),
+        (Emu(16200000), y0 + Emu(4200000)),
+    ]
+    for (num, txt), (x, y) in zip(signs, positions):
+        add_rect(slide, x, y, Emu(7000000), Emu(3200000), WHITE, line=LINE)
+        add_icon_circle(slide, x + Emu(250000), y + Emu(400000), Emu(900000), num)
+        add_textbox(
+            slide, x + Emu(250000), y + Emu(1600000), Emu(6500000), Emu(1300000),
+            txt, size=24, bold=False, color=TEXT,
+        )
+
+    content_slide(
+        prs, "Что такое обзорный осмотр",
         [
             "Быстрая визуальная оценка пострадавшего с головы до ног.",
-            "Цель — выявить продолжающееся наружное кровотечение, угрожающее жизни.",
-            "Выполняется сразу после оценки обстановки и обеспечения безопасности.",
-            "Длительность: около 1–2 секунд (по учебным материалам).",
-            "При обнаружении кровотечения — немедленно приступить к его временной остановке.",
-            "Проводится до подробного осмотра и до оценки признаков жизни (Приказ Минздрава № 220н).",
+            "Цель — выявить продолжающееся наружное кровотечение.",
+            "Выполняется сразу после оценки обстановки и безопасности.",
+            "Длительность: около 1–2 секунд.",
+            "При кровотечении — немедленно начать его остановку.",
+            "По Приказу Минздрава № 220н — до подробного осмотра.",
         ],
-        page_no=4,
-        highlight_box="Приоритет: сначала угрожающее жизни кровотечение, затем — остальные мероприятия.",
+        highlight="Приоритет: сначала угрожающее жизни кровотечение.",
     )
 
-    # исходный слайд обзорного осмотра
-    add_image_slide(prs, PAGES / "page_04.png")
+    content_slide(prs, "Порядок обзорного осмотра", [
+        "Убедиться в собственной безопасности (перчатки / СИЗ).",
+        "Быстро осмотреть пострадавшего с головы до ног.",
+        "Искать кровь на одежде, лужи крови, пульсирующую струю.",
+        "При нескольких пострадавших — осмотреть всех.",
+        "Приоритет — детям и пострадавшим с массивным кровотечением.",
+        "После остановки крови — оценка сознания / дыхания и подробный осмотр.",
+    ])
 
-    add_content_slide(
-        prs,
-        "ПОРЯДОК ОБЗОРНОГО ОСМОТРА",
-        [
-            "1. Убедиться в собственной безопасности и безопасности пострадавшего.",
-            "2. Быстро осмотреть пострадавшего с головы до ног.",
-            "3. Обратить внимание на пропитанную кровью одежду, лужи крови, пульсирующую струю.",
-            "4. При нескольких пострадавших — осмотреть всех, приоритет — детям и тяжелым.",
-            "5. При выявлении кровотечения — начать временную остановку (прямое давление и др.).",
-            "6. Только после устранения угрожающего кровотечения — переходить к оценке сознания/дыхания и подробному осмотру.",
-        ],
-        page_no=6,
+    # Сравнительная схема двух колонок
+    slide = blank(prs)
+    y0 = title_bar(slide, "Обзорный и подробный осмотр")
+    add_rect(slide, Emu(800000), y0 + Emu(200000), Emu(10800000), Emu(9500000), WHITE, line=LINE)
+    add_rect(slide, Emu(12800000), y0 + Emu(200000), Emu(10800000), Emu(9500000), WHITE, line=LINE)
+    add_rect(slide, Emu(800000), y0 + Emu(200000), Emu(10800000), Emu(900000), ACCENT_BLUE)
+    add_rect(slide, Emu(12800000), y0 + Emu(200000), Emu(10800000), Emu(900000), BG_BAR)
+    add_textbox(
+        slide, Emu(1000000), y0 + Emu(350000), Emu(10000000), Emu(600000),
+        "Обзорный осмотр", size=26, bold=True, color=WHITE,
     )
-
-    add_content_slide(
-        prs,
-        "ОБЗОРНЫЙ И ПОДРОБНЫЙ ОСМОТР — РАЗЛИЧИЯ",
-        [],
-        page_no=7,
-        two_cols=(
-            [
-                "ОБЗОРНЫЙ ОСМОТР",
-                "Цель: найти наружное кровотечение",
-                "Время: секунды (1–2 с)",
-                "Объём: быстрый взгляд с головы до ног",
-                "Когда: сразу после оценки обстановки",
-                "Результат: решение — останавливать кровь или нет",
-            ],
-            [
-                "ПОДРОБНЫЙ ОСМОТР",
-                "Цель: выявить травмы и другие угрозы",
-                "Время: несколько минут",
-                "Объём: голова → шея → грудь → живот → таз → ноги → руки",
-                "Когда: после остановки кровотечения и оценки признаков жизни",
-                "Результат: повязки, иммобилизация, положение тела",
-            ],
-        ),
+    add_textbox(
+        slide, Emu(13000000), y0 + Emu(350000), Emu(10000000), Emu(600000),
+        "Подробный осмотр", size=26, bold=True, color=TEXT,
     )
+    left_items = [
+        "Цель: найти наружное кровотечение",
+        "Время: 1–2 секунды",
+        "Объём: быстрый взгляд с головы до ног",
+        "Когда: сразу после оценки обстановки",
+        "Результат: останавливать кровь или нет",
+    ]
+    right_items = [
+        "Цель: выявить травмы и другие угрозы",
+        "Время: несколько минут",
+        "Объём: голова → шея → грудь → … → руки",
+        "Когда: после остановки кровотечения",
+        "Результат: повязки, иммобилизация",
+    ]
+    bullets(slide, Emu(1000000), y0 + Emu(1400000), Emu(10000000), Emu(8000000), left_items, size=24)
+    bullets(slide, Emu(13000000), y0 + Emu(1400000), Emu(10000000), Emu(8000000), right_items, size=24)
 
-    add_content_slide(
-        prs,
-        "КОГДА ОБЗОРНЫЙ ОСМОТР КРИТИЧЕСКИ ВАЖЕН",
-        [
-            "ДТП — скрытые раны под одеждой, кровотечение из конечностей и живота.",
-            "Падение с высоты — множественные повреждения, риск массивной кровопотери.",
-            "Производственные травмы (механизмы, режущий инструмент) — артериальное кровотечение.",
-            "Взрыв, обрушение, ЧС с несколькими пострадавшими — нужна быстрая сортировка.",
-            "Огнестрельные и колото-резаные ранения — кровь может скапливаться в одежде.",
-            "Правило: если видна кровь или одежда пропитана — действуйте немедленно.",
-        ],
-        page_no=8,
-    )
+    content_slide(prs, "Когда обзорный осмотр критически важен", [
+        "ДТП — раны под одеждой, кровотечение из конечностей.",
+        "Падение с высоты — множественные повреждения.",
+        "Производственные травмы — риск артериального кровотечения.",
+        "ЧС с несколькими пострадавшими — быстрая сортировка.",
+        "Огнестрельные и колото-резаные ранения.",
+        "Правило: видна кровь или одежда пропитана — действуйте сразу.",
+    ])
 
-    add_summary_slide(prs, [
-        "Кровотечение — выход крови из сосудистого русла с риском острой кровопотери.",
-        "Обзорный осмотр — быстрый поиск наружного кровотечения с головы до ног (1–2 с).",
-        "При кровотечении сначала останавливаем кровь, затем проводим подробный осмотр.",
+    summary_slide(prs, [
+        "Кровотечение — выход крови из сосудов с риском острой кровопотери.",
+        "Обзорный осмотр — быстрый поиск кровотечения с головы до ног (1–2 с).",
+        "Сначала останавливаем кровь, затем проводим подробный осмотр.",
         "Особенно важен при ДТП, падении с высоты и множественных пострадавших.",
-    ], page_no=9)
-    add_thanks_slide(prs)
+    ])
+    thanks_slide(prs)
 
-    out = OUT / "Кровотечение_и_обзорный_осмотр.pptx"
-    prs.save(out)
-    return out
+    path = OUT / "Кровотечение_и_обзорный_осмотр.pptx"
+    prs.save(path)
+    return path
 
 
 # ───────────────────── ПРЕЗЕНТАЦИЯ 2 ─────────────────────
 
 def build_pres2():
     prs = new_prs()
-    add_title_slide(
+    title_slide(
         prs,
         "Признаки наружного кровотечения и кровопотери",
-        "Теоретический модуль · п. 2.2 Приложения № 2 к ПП РФ № 2464",
-        "Курс первой помощи · Тема 2",
+        "Теоретический модуль · п. 2.2",
     )
-    add_toc_slide(prs, "Содержание", [
-        "Виды наружного кровотечения: артериальное, венозное, капиллярное",
-        "Сравнительная характеристика видов кровотечения",
-        "Признаки острой кровопотери и оценка объёма",
-        "Признаки скрытого (внутреннего) кровотечения — кратко",
-    ], page_no=2)
+    toc_slide(prs, [
+        "Виды наружного кровотечения",
+        "Сравнительная характеристика",
+        "Признаки острой кровопотери и объём",
+        "Скрытое (внутреннее) кровотечение",
+    ])
 
-    add_image_slide(prs, PAGES / "page_02.png")  # определение + признаки
-    add_image_slide(prs, PAGES / "page_03.png")  # три вида с иллюстрациями
+    # Три вида — карточки с иконками
+    slide = blank(prs)
+    y0 = title_bar(slide, "Виды наружного кровотечения")
+    cards = [
+        ("А", "Артериальное", "Алая кровь\nпульсирующей струёй\nОпасность: критическая", ACCENT_RED),
+        ("В", "Венозное", "Тёмная кровь\nравномерной струёй\nОпасность: высокая", ACCENT_BLUE),
+        ("К", "Капиллярное", "Сочится по поверхности\nОпасность: обычно низкая", BG_BAR),
+    ]
+    x = Emu(800000)
+    for letter, name, desc, color in cards:
+        add_rect(slide, x, y0 + Emu(400000), Emu(7200000), Emu(9000000), WHITE, line=LINE)
+        add_icon_circle(slide, x + Emu(2800000), y0 + Emu(1000000), Emu(1400000), letter, fill=color)
+        add_textbox(
+            slide, x + Emu(400000), y0 + Emu(2800000), Emu(6400000), Emu(900000),
+            name, size=26, bold=True, color=TEXT, align=PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, x + Emu(500000), y0 + Emu(4000000), Emu(6200000), Emu(4500000),
+            desc, size=24, bold=False, color=TEXT, align=PP_ALIGN.CENTER,
+        )
+        x += Emu(7600000)
 
-    add_table_slide(
-        prs,
-        "СРАВНИТЕЛЬНАЯ ТАБЛИЦА ВИДОВ КРОВОТЕЧЕНИЯ",
+    slide = blank(prs)
+    y0 = title_bar(slide, "Сравнительная таблица видов кровотечения")
+    add_table(
+        slide, Emu(800000), y0 + Emu(300000), Emu(22800000), Emu(9000000),
         ["Признак", "Артериальное", "Венозное", "Капиллярное"],
         [
             ["Цвет крови", "Алый, яркий", "Тёмный, вишнёвый", "Красный"],
-            ["Характер", "Пульсирующей струёй", "Равномерной струёй", "Сочится по поверхности"],
+            ["Характер", "Пульсирующей струёй", "Равномерной струёй", "Сочится"],
             ["Скорость", "Очень быстрая", "Умеренная / быстрая", "Медленная"],
             ["Опасность", "Критическая — минуты", "Высокая при крупных венах", "Обычно низкая"],
-            ["Приоритет помощи", "Немедленно", "Быстро", "По ситуации"],
+            ["Приоритет", "Немедленно", "Быстро", "По ситуации"],
         ],
-        page_no=5,
+        font_size=22,
     )
 
-    add_content_slide(
-        prs,
-        "ПРИЗНАКИ ОСТРОЙ КРОВОПОТЕРИ",
+    content_slide(prs, "Признаки острой кровопотери", [
+        "Резкая общая слабость, жажда, головокружение.",
+        "Мелькание «мушек» перед глазами; обморок при попытке встать.",
+        "Бледная, влажная, холодная кожа.",
+        "Учащённое сердцебиение и частое дыхание.",
+        "Тревога, возбуждение → затем апатия.",
+        "Слабый / нитевидный пульс при тяжёлой кровопотере.",
+    ])
+
+    slide = blank(prs)
+    y0 = title_bar(slide, "Оценка объёма кровопотери")
+    add_table(
+        slide, Emu(800000), y0 + Emu(300000), Emu(22800000), Emu(7500000),
+        ["Объём", "Доля ОЦК", "Состояние пострадавшего"],
         [
-            "Резкая общая слабость, жажда, головокружение.",
-            "Мелькание «мушек» перед глазами; обморок (часто при попытке встать).",
-            "Бледная, влажная, холодная кожа.",
-            "Учащённое сердцебиение и частое дыхание.",
-            "Тревога, возбуждение → затем апатия (при нарастании кровопотери).",
-            "Снижение наполнения пульса; при тяжёлой кровопотере — нитевидный пульс.",
+            ["До ~500 мл", "≈ 10%", "Слабость, жажда"],
+            ["500–1000 мл", "≈ 10–20%", "Бледность, тахикардия"],
+            ["1000–1500 мл", "≈ 20–30%", "Головокружение, холодный пот, обмороки"],
+            ["Более 1500–2000 мл", "> 30%", "Угроза жизни, шок, потеря сознания"],
         ],
-        page_no=6,
+        font_size=22,
+    )
+    add_textbox(
+        slide, Emu(800000), Emu(11500000), Emu(22800000), Emu(1200000),
+        "Ориентиры условные; у детей и пожилых критический порог ниже.",
+        size=24, bold=True, color=ACCENT_RED,
     )
 
-    add_content_slide(
-        prs,
-        "ОЦЕНКА ОБЪЁМА КРОВОПОТЕРИ И СОСТОЯНИЕ",
+    content_slide(
+        prs, "Признаки скрытого (внутреннего) кровотечения",
         [
-            "Ориентир для взрослого (объём циркулирующей крови ≈ 5 л):",
-            "До ~500 мл (≈10%) — обычно компенсируется, возможны слабость и жажда.",
-            "500–1000 мл (≈10–20%) — выраженная слабость, бледность, тахикардия.",
-            "1000–1500 мл (≈20–30%) — головокружение, холодный пот, обмороки.",
-            "Более 1500–2000 мл (>30%) — угроза жизни, шок, потеря сознания.",
-            "На месте происшествия ориентируйтесь на признаки, а не на точный подсчёт мл.",
-            "Любое продолжающееся наружное кровотечение останавливайте немедленно.",
-        ],
-        page_no=7,
-        alert_indices={4},
-        note="Ориентиры условные; у детей и пожилых критический порог ниже.",
-    )
-
-    add_content_slide(
-        prs,
-        "ПРИЗНАКИ СКРЫТОГО (ВНУТРЕННЕГО) КРОВОТЕЧЕНИЯ",
-        [
-            "Кратко для контекста: кровь изливается в полости тела, снаружи может не быть видно.",
+            "Кровь изливается в полости тела — снаружи может не быть видно.",
             "Бледность, холодный пот, нарастающая слабость, жажда.",
-            "Учащённый слабый пульс, частое дыхание, беспокойство или заторможенность.",
-            "Боль и напряжение живота, увеличение живота (при кровотечении в брюшную полость).",
-            "При травме груди — одышка, слабость, бледность (подозрение на гемоторакс).",
-            "Действия: вызвать СМП, придать оптимальное положение, холод на живот (при закрытой травме), не кормить и не поить, контролировать состояние.",
+            "Учащённый слабый пульс, частое дыхание.",
+            "Боль и напряжение живота (кровотечение в брюшную полость).",
+            "При травме груди — одышка, слабость, бледность.",
+            "Действия: вызвать СМП, положение, холод на живот, не кормить и не поить.",
         ],
-        page_no=8,
-        highlight_box="Внутреннее кровотечение самостоятельно не «останавливают» на месте — нужна скорая помощь.",
+        highlight="Внутреннее кровотечение на месте не «останавливают» — нужна СМП.",
     )
 
-    add_summary_slide(prs, [
-        "Артериальное — алая кровь пульсирующей струёй; венозное — тёмная струя; капиллярное — сочение.",
-        "Признаки кровопотери: слабость, жажда, бледность, холодный пот, тахикардия, частое дыхание.",
+    summary_slide(prs, [
+        "Артериальное — алая пульсирующая струя; венозное — тёмная струя; капиллярное — сочение.",
+        "Признаки кровопотери: слабость, жажда, бледность, холодный пот, тахикардия.",
         "Потеря >30% ОЦК угрожает жизни; у детей порог ниже.",
-        "При подозрении на внутреннее кровотечение — срочный вызов СМП и щадящий режим.",
-    ], page_no=9)
-    add_thanks_slide(prs)
+        "При подозрении на внутреннее кровотечение — срочный вызов СМП.",
+    ])
+    thanks_slide(prs)
 
-    out = OUT / "Признаки_наружного_кровотечения.pptx"
-    prs.save(out)
-    return out
+    path = OUT / "Признаки_наружного_кровотечения.pptx"
+    prs.save(path)
+    return path
 
 
 # ───────────────────── ПРЕЗЕНТАЦИЯ 3 ─────────────────────
 
 def build_pres3():
     prs = new_prs()
-    add_title_slide(
+    title_slide(
         prs,
         "Способы временной остановки наружного кровотечения",
-        "Теоретический модуль · п. 2.3 Приложения № 2 к ПП РФ № 2464",
-        "Курс первой помощи · Тема 2",
+        "Теоретический модуль · п. 2.3",
     )
-    add_toc_slide(prs, "Содержание", [
-        "Прямое давление на рану и давящая повязка",
-        "Пальцевое прижатие артерий и максимальное сгибание",
-        "Кровоостанавливающий жгут и подручные средства",
-        "Алгоритм, записка, ошибки и ограничения жгута",
-    ], page_no=2)
+    toc_slide(prs, [
+        "Прямое давление и давящая повязка",
+        "Пальцевое прижатие и максимальное сгибание",
+        "Жгут и подручные средства",
+        "Алгоритм, записка, ошибки и ограничения",
+    ])
 
-    add_section_divider(prs, "Прямое давление и давящая повязка", 3)
-    add_image_slide(prs, PAGES / "page_05.png")
+    section_slide(prs, "Прямое давление и давящая повязка")
 
-    add_content_slide(
-        prs,
-        "ПРЯМОЕ ДАВЛЕНИЕ НА РАНУ И ДАВЯЩАЯ ПОВЯЗКА",
+    content_slide(prs, "Прямое давление на рану", [
+        "Основной способ по Приказу Минздрава № 220н.",
+        "Надавите чистой салфеткой / рукой прямо на рану.",
+        "Удерживайте давление непрерывно.",
+        "Если кровотечение остановилось — наложите давящую повязку.",
+        "При промокании — не снимать, усилить поверх новыми турами.",
+        "Если давление невозможно (инородное тело, отломки) — повязка / жгут.",
+    ])
+
+    content_slide(prs, "Давящая повязка", [
+        "Салфетка на рану + тугое бинтование с усилием.",
+        "Накладывается после остановки крови прямым давлением.",
+        "Либо сразу, если прямое давление невозможно или опасно.",
+        "Может включать фиксацию инородного тела в ране.",
+        "Контролируйте цвет и чувствительность пальцев дистальнее.",
+        "При промокании усиливайте, не снимая нижние слои.",
+    ])
+
+    section_slide(prs, "Пальцевое прижатие артерий")
+
+    # Схема точек прижатия — таблица + список
+    slide = blank(prs)
+    y0 = title_bar(slide, "Точки пальцевого прижатия артерий")
+    add_table(
+        slide, Emu(800000), y0 + Emu(300000), Emu(22800000), Emu(9500000),
+        ["Артерия", "Место прижатия", "Как давить"],
         [
-            "Прямое давление — основной способ по Приказу Минздрава № 220н.",
-            "Надавите чистой салфеткой/рукой прямо на рану и удерживайте.",
-            "Если кровотечение остановилось — наложите давящую повязку.",
-            "Давящая повязка: салфетка на рану + тугое бинтование с усилием.",
-            "При промокании — не снимать, усилить поверх новыми турами бинта.",
-            "Если давление невозможно/опасно (инородное тело, костные отломки) — давящая повязка с фиксацией предмета и/или жгут.",
+            ["Сонная", "Шея снаружи от гортани, к позвоночнику", "4 пальца или большой палец"],
+            ["Подключичная", "Ямка над ключицей к I ребру", "4 пальца / согнутые пальцы"],
+            ["Подмышечная", "Подмышечная впадина к плечевой кости", "Прямые жёсткие пальцы"],
+            ["Плечевая", "Внутренняя сторона плеча (бицепс–трицепс)", "4 пальца, обхватывая плечо"],
+            ["Бедренная", "Ниже паховой складки", "Кулак, вес тела"],
         ],
-        page_no=5,
+        font_size=20,
     )
 
-    add_section_divider(prs, "Пальцевое прижатие артерий", 6)
-    for p in range(6, 11):  # pages 6-10
-        add_image_slide(prs, PAGES / f"page_{p:02d}.png")
+    content_slide(prs, "Максимальное сгибание конечности", [
+        "Предплечье: валик в локтевой сгиб → максимум согнуть → фиксировать к плечу.",
+        "Голень / стопа: валик в подколенную ямку → согнуть в колене → фиксировать.",
+        "Бедро: валик в паховую складку → колено к груди → фиксировать.",
+        "Временный приём до наложения повязки или жгута.",
+        "Не применять при подозрении на перелом в зоне сгибания.",
+    ])
 
-    add_content_slide(
-        prs,
-        "ТОЧКИ ПАЛЬЦЕВОГО ПРИЖАТИЯ — СВОДКА",
+    section_slide(prs, "Кровоостанавливающий жгут")
+
+    content_slide(
+        prs, "Показания к наложению жгута",
         [
-            "Сонная — на шее снаружи от гортани, к позвоночнику (на стороне повреждения).",
-            "Подключичная — в ямке над ключицей к I ребру.",
-            "Подмышечная — в подмышечной впадине к плечевой кости.",
-            "Плечевая — с внутренней стороны плеча между бицепсом и трицепсом.",
-            "Бедренная — ниже паховой складки, давление кулаком весом тела.",
-            "Это временный приём до наложения повязки/жгута; держать до передачи СМП или замены способом.",
+            "Обширное повреждение конечности.",
+            "Отрыв (травматическая ампутация) конечности.",
+            "Кровотечение не останавливается прямым давлением.",
+            "Давящая повязка неэффективна.",
+            "Накладывать на плечо или бедро (не на предплечье / голень).",
+            "Обязательно на одежду или подкладку.",
         ],
-        page_no=12,
-        note="В актуальном алгоритме № 220н приоритет — прямое давление; пальцевое прижатие сохраняется в учебных программах.",
+        highlight="t max ≤ 60 мин в тёплое время · ≤ 30 мин в холодное!",
     )
 
-    add_section_divider(prs, "Максимальное сгибание конечности", 13)
-    add_image_slide(prs, PAGES / "page_11.png")
+    # Алгоритм жгута — схема шагов
+    slide = blank(prs)
+    y0 = title_bar(slide, "Пошаговый алгоритм наложения жгута")
+    steps = [
+        ("1", "Показания: давление и повязка неэффективны / отрыв"),
+        ("2", "Место: выше раны, на плечо или бедро"),
+        ("3", "На одежду / подкладку; первый тур — максимальное натяжение"),
+        ("4", "Кровь остановилась, пульс дистальнее не определяется"),
+        ("5", "Записка со временем; жгут должен быть виден"),
+        ("6", "Лимит: 60 мин (тепло) / 30 мин (холод)"),
+    ]
+    y = y0 + Emu(200000)
+    for num, txt in steps:
+        accent = num == "6"
+        add_flow_step(slide, Emu(800000), y, Emu(22800000), Emu(1200000), num, txt, accent=accent)
+        y += Emu(1400000)
 
-    add_section_divider(prs, "Кровоостанавливающий жгут", 15)
-    add_image_slide(prs, PAGES / "page_12.png")
-    add_image_slide(prs, PAGES / "page_13.png")
+    content_slide(prs, "Записка под жгут", [
+        "Укажите точное время наложения: ЧЧ:ММ (и дату при необходимости).",
+        "Фамилия / кто наложил — по возможности.",
+        "Кратко — место происшествия.",
+        "Вложите записку под жгут или прикрепите к одежде на видном месте.",
+        "Сообщите время бригаде скорой помощи при передаче.",
+        "Не полагайтесь только на память.",
+    ], highlight="Без записки легко превысить допустимое время жгута!")
 
-    add_content_slide(
-        prs,
-        "ПОШАГОВЫЙ АЛГОРИТМ НАЛОЖЕНИЯ ЖГУТА",
-        [
-            "1. Показания: обширное повреждение/отрыв конечности; прямое давление и давящая повязка неэффективны.",
-            "2. Место: выше раны, на плечо или бедро (не на предплечье/голень — две кости).",
-            "3. Наложить на одежду или подкладку (не на голую кожу).",
-            "4. Первый тур — максимальное натяжение; последующие — фиксирующие.",
-            "5. Критерий правильности: кровотечение остановилось, пульс дистальнее не определяется.",
-            "6. Зафиксировать время наложения письменно (записка) и оставить её под жгутом / на видном месте.",
-            "7. Конечность не укрывать жгутом — он должен быть виден бригаде СМП.",
-            "8. Максимальное время: 60 мин в тёплое время года; 30 мин в холодное.",
-        ],
-        page_no=18,
-        alert_indices={7},
-    )
+    content_slide(prs, "Ошибки при наложении жгута", [
+        "Слабое натяжение — венозный застой, усиление кровотечения.",
+        "Слишком далеко от раны — излишняя ишемия.",
+        "На голую кожу без подкладки — повреждение кожи и нервов.",
+        "Скрытие жгута одеждой — бригада СМП может не заметить.",
+        "Нет записки со временем — риск превышения срока.",
+        "Жгут «на всякий случай» при капиллярном кровотечении.",
+    ])
 
-    add_content_slide(
-        prs,
-        "ЗАПИСКА ПОД ЖГУТ — ЧТО УКАЗАТЬ",
-        [
-            "Точное время наложения: ЧЧ:ММ (и дата, если помощь затягивается).",
-            "Фамилия / кто наложил (по возможности).",
-            "Место происшествия (кратко).",
-            "Записку вложить под жгут или прикрепить к одежде на видном месте.",
-            "Сообщить время бригаде скорой помощи при передаче пострадавшего.",
-            "Не полагаться только на память — при смене оказывающих помощь время теряется.",
-        ],
-        page_no=19,
-        highlight_box="t max ≤ 60 мин (тепло) / 30 мин (холод) — укажите время наложения обязательно!",
-    )
+    content_slide(prs, "Когда НЕЛЬЗЯ накладывать жгут", [
+        "Кровотечение останавливается давлением или давящей повязкой.",
+        "Капиллярное и умеренное венозное кровотечение.",
+        "Раны шеи, груди, живота, головы — жгут туда не накладывают.",
+        "Нет конечности проксимальнее раны для размещения жгута.",
+        "Инородное тело без массивного артериального кровотечения — фиксация + повязка.",
+    ], alert_idx={2})
 
-    add_content_slide(
-        prs,
-        "ОШИБКИ ПРИ НАЛОЖЕНИИ ЖГУТА И ПОСЛЕДСТВИЯ",
-        [
-            "Слабое натяжение — венозный застой, усиление кровотечения.",
-            "Наложение слишком далеко от раны — излишняя ишемия тканей.",
-            "Наложение на голую кожу без подкладки — повреждение кожи/нервов.",
-            "Скрытие жгута одеждой/одеялом — бригада СМП может не заметить.",
-            "Отсутствие записки со временем — риск превышения допустимого срока.",
-            "Наложение без показаний (при капиллярном кровотечении) — ненужная ишемия.",
-            "Снятие жгута «проверить» без готовности сразу остановить кровь повторно — опасно.",
-        ],
-        page_no=20,
-    )
+    content_slide(prs, "Подручные средства и гемостатики", [
+        "Импровизированный жгут: тесьма, платок, галстук, ремень + закрутка.",
+        "Не использовать проволоку, леску, узкий шнур.",
+        "Гемостатические салфетки / бинты из аптечки первой помощи.",
+        "Плотно вложить в рану / на рану, сильно придавить, затем повязка.",
+        "Применяют там, где жгут невозможен, или как усиление давления.",
+        "После остановки — контроль, согревание, ожидание СМП.",
+    ])
 
-    add_content_slide(
-        prs,
-        "КОГДА НЕЛЬЗЯ НАКЛАДЫВАТЬ ЖГУТ",
-        [
-            "Кровотечение останавливается прямым давлением / давящей повязкой.",
-            "Капиллярное и умеренное венозное кровотечение без признаков массивной потери.",
-            "Раны на шее, груди, животе, голове — жгут на эти области не накладывают.",
-            "Нет конечности проксимальнее раны для размещения жгута.",
-            "При инородном теле в ране без массивного артериального кровотечения — фиксация предмета + повязка.",
-            "Исключение-показание: отрыв конечности, обширное разрушение, неэффективность давления.",
-        ],
-        page_no=21,
-    )
-
-    add_content_slide(
-        prs,
-        "АЛЬТЕРНАТИВЫ И ДОПОЛНЕНИЯ (СОВРЕМЕННЫЕ СРЕДСТВА)",
-        [
-            "Гемостатические (кровоостанавливающие) салфетки/бинты из аптечек первой помощи.",
-            "Применение: плотно вложить в рану / на рану и сильно придавить, затем давящая повязка.",
-            "Используются при ранениях, где жгут невозможен или как усиление прямого давления.",
-            "Импровизированный жгут: тесьма, платок, галстук, ремень + закрутка (см. исходный слайд).",
-            "Не использовать тонкую проволоку, леску, узкий шнур — риск глубокого повреждения тканей.",
-            "После остановки крови — контроль повязки, согревание, вызов / ожидание СМП.",
-        ],
-        page_no=22,
-    )
-
-    add_summary_slide(prs, [
-        "Приоритет: прямое давление → давящая повязка → жгут (по показаниям).",
-        "Пальцевое прижатие и максимальное сгибание — временные учебные приёмы.",
-        "Жгут: на одежду, выше раны, с запиской; ≤60 мин (тепло) / ≤30 мин (холод).",
+    summary_slide(prs, [
+        "Приоритет: прямое давление → давящая повязка → жгут по показаниям.",
+        "Пальцевое прижатие и сгибание — временные приёмы.",
+        "Жгут: на одежду, выше раны, с запиской; ≤60 мин / ≤30 мин.",
         "Гемостатические средства усиливают давление там, где это уместно.",
-    ], page_no=23)
-    add_thanks_slide(prs)
+    ])
+    thanks_slide(prs)
 
-    out = OUT / "Способы_временной_остановки_кровотечения.pptx"
-    prs.save(out)
-    return out
+    path = OUT / "Способы_временной_остановки_кровотечения.pptx"
+    prs.save(path)
+    return path
 
 
 # ───────────────────── ПРЕЗЕНТАЦИЯ 4 ─────────────────────
 
 def build_pres4():
     prs = new_prs()
-    add_title_slide(
+    title_slide(
         prs,
         "Последовательность мероприятий по остановке кровотечения",
-        "Теоретический модуль · п. 2.4 Приложения № 2 к ПП РФ № 2464",
-        "Курс первой помощи · Тема 2",
+        "Теоретический модуль · п. 2.4",
     )
-    add_toc_slide(prs, "Содержание", [
-        "Полный алгоритм действий на месте происшествия",
-        "Приоритетность способов остановки кровотечения",
+    toc_slide(prs, [
+        "Полный алгоритм действий",
+        "Приоритетность способов остановки",
         "Профилактика травматического шока",
-        "Подробный осмотр и действия после остановки крови",
-    ], page_no=2)
+        "Подробный осмотр и действия после остановки",
+    ])
 
-    add_content_slide(
-        prs,
-        "ПОЛНЫЙ АЛГОРИТМ (ЧЕК-ЛИСТ)",
-        [
-            "1. Оценка обстановки → безопасность себе и пострадавшему (СИЗ: перчатки).",
-            "2. Обзорный осмотр — поиск наружного кровотечения.",
-            "3. Временная остановка кровотечения (давление / повязка / жгут).",
-            "4. Определение признаков жизни: сознание → дыхание (при отсутствии сознания).",
-            "5. При отсутствии признаков жизни — СЛР; при наличии — поддержание дыхательных путей.",
-            "6. Вызов скорой медицинской помощи (если ещё не вызвали).",
-            "7. Подробный осмотр и помощь при выявленных травмах.",
-            "8. Оптимальное положение, согревание, контроль состояния, передача бригаде СМП.",
-        ],
-        page_no=3,
-        note="Последовательность по Приказу Минздрава РФ от 03.05.2024 № 220н.",
+    # Чек-лист алгоритма схемой
+    slide = blank(prs)
+    y0 = title_bar(slide, "Полный алгоритм (чек-лист)", "Приказ Минздрава РФ № 220н")
+    steps = [
+        ("1", "Оценка обстановки → безопасность (СИЗ)"),
+        ("2", "Обзорный осмотр — поиск кровотечения"),
+        ("3", "Временная остановка кровотечения"),
+        ("4", "Признаки жизни: сознание → дыхание"),
+        ("5", "СЛР при отсутствии признаков жизни"),
+        ("6", "Вызов скорой медицинской помощи"),
+        ("7", "Подробный осмотр и помощь при травмах"),
+        ("8", "Положение, тепло, контроль, передача СМП"),
+    ]
+    # 2 columns of steps
+    for i, (num, txt) in enumerate(steps):
+        col = i % 2
+        row = i // 2
+        x = Emu(800000) + Emu(col * 11800000)
+        y = y0 + Emu(200000) + Emu(row * 2000000)
+        accent = num in ("2", "3")
+        add_flow_step(slide, x, y, Emu(11000000), Emu(1600000), num, txt, accent=accent)
+
+    content_slide(prs, "Оценка состояния пострадавшего", [
+        "При массивном кровотечении сначала остановите кровь.",
+        "Сознание: громко обратитесь, осторожно потрясите за плечи.",
+        "Дыхание: смотрю–слушаю–ощущаю не более 10 секунд.",
+        "При нескольких травмах — сначала то, что угрожает жизни сейчас.",
+        "Не тратьте время на второстепенные раны при угрожающем кровотечении.",
+    ])
+
+    # Приоритетность — схема стрелками
+    slide = blank(prs)
+    y0 = title_bar(slide, "Приоритетность способов остановки")
+    labels = [
+        ("1", "Прямое\nдавление"),
+        ("2", "Давящая\nповязка"),
+        ("3", "Жгут\nпо показаниям"),
+    ]
+    x = Emu(1200000)
+    for i, (num, lab) in enumerate(labels):
+        add_round(slide, x, y0 + Emu(2500000), Emu(5000000), Emu(3500000), ACCENT_BLUE if i == 0 else BG_BAR)
+        add_textbox(
+            slide, x, y0 + Emu(2700000), Emu(5000000), Emu(800000),
+            num, size=32, bold=True, color=WHITE if i == 0 else TEXT,
+            align=PP_ALIGN.CENTER,
+        )
+        add_textbox(
+            slide, x + Emu(200000), y0 + Emu(3600000), Emu(4600000), Emu(2000000),
+            lab, size=26, bold=True, color=WHITE if i == 0 else TEXT,
+            align=PP_ALIGN.CENTER,
+        )
+        if i < 2:
+            add_arrow_right(slide, x + Emu(5200000), y0 + Emu(4000000))
+        x += Emu(7000000)
+    add_textbox(
+        slide, Emu(800000), Emu(11000000), Emu(22800000), Emu(1500000),
+        "Дополнительно (по учебным программам): пальцевое прижатие, максимальное сгибание.",
+        size=24, bold=False, color=TEXT,
     )
 
-    add_content_slide(
-        prs,
-        "ОЦЕНКА СОСТОЯНИЯ ПЕРЕД / В ХОДЕ ПОМОЩИ",
+    content_slide(prs, "Приоритет при множественных травмах", [
+        "Сначала — угрожающее жизни кровотечение.",
+        "Затем — проходимость дыхательных путей и дыхание / СЛР.",
+        "Затем — остальные кровотечения и раны.",
+        "Затем — иммобилизация, повязки, оптимальное положение.",
+        "При нескольких пострадавших — приоритет детям и массивным кровотечениям.",
+    ])
+
+    content_slide(prs, "Травматический шок: понятие и признаки", [
+        "Причины: тяжёлые травмы и сильные кровотечения.",
+        "Наличие тяжёлой травмы и сильного кровотечения.",
+        "Нарушения дыхания и кровообращения (учащение).",
+        "Бледная холодная влажная кожа.",
+        "Возбуждение, сменяющееся апатией.",
+    ])
+
+    content_slide(prs, "Профилактика травматического шока", [
+        "Остановить кровотечение как можно раньше.",
+        "Придать оптимальное положение тела.",
+        "Иммобилизировать повреждённые конечности.",
+        "Защитить от переохлаждения (укрыть, изотермическое покрывало).",
+        "Не давать есть и пить при тяжёлой травме.",
+        "Покой, психологическая поддержка, контроль сознания и дыхания.",
+    ])
+
+    content_slide(prs, "Порядок подробного осмотра", [
+        "Голова → шея → грудь → живот и таз → ноги → руки.",
+        "Спина — при возможности безопасно повернуть / осмотреть.",
+        "При сознании — короткий опрос о жалобах и механизме травмы.",
+        "Ищите раны, деформации, болезненность, признаки внутреннего кровотечения.",
+        "Устраняйте угрозы по мере выявления (повязка, фиксация, холод).",
+    ])
+
+    content_slide(prs, "Действия после остановки кровотечения", [
+        "Контролируйте повязку: при промокании усильте, не снимая нижние слои.",
+        "Проверяйте признаки жизни: сознание, дыхание, цвет кожи.",
+        "Следите за жгутом: время, видимость, записка.",
+        "Согрейте пострадавшего, обеспечьте покой.",
+        "При ухудшении — повторный вызов СМП с динамикой.",
+        "Передайте бригаде: что случилось, что сделано, время жгута.",
+    ])
+
+    content_slide(
+        prs, "Когда и как ослаблять жгут",
         [
-            "При продолжающемся массивном кровотечении сначала остановите кровь (сердце ещё работает).",
-            "Сознание: громко обратитесь, осторожно потрясите за плечи.",
-            "Дыхание: смотрю–слушаю–ощущаю не более 10 секунд (после восстановления проходимости ДП).",
-            "Кровообращение: ориентир — признаки жизни и характер кровотечения; пульс — при подготовке.",
-            "При нескольких травмах: сначала то, что угрожает жизни прямо сейчас (кровотечение, дыхание).",
-            "Не тратьте время на второстепенные раны, пока не остановлено угрожающее кровотечение.",
+            "Планово ослаблять жгут на месте не рекомендуется.",
+            "Если время превысило 60 мин / 30 мин и СМП задерживается:",
+            "подготовьте прямое давление / давящую повязку;",
+            "медленно ослабьте жгут, оценивая кровотечение;",
+            "если кровь снова бьёт струёй — немедленно затяните и обновите время;",
+            "решение о снятии, как правило, принимает медработник.",
         ],
-        page_no=4,
+        alert_idx={1},
+        highlight="Лимит жгута: ≤ 60 мин (тепло) · ≤ 30 мин (холод)!",
     )
 
-    add_content_slide(
-        prs,
-        "ПРИОРИТЕТНОСТЬ СПОСОБОВ ОСТАНОВКИ",
-        [
-            "1. Прямое давление на рану — первый выбор в большинстве случаев.",
-            "2. Давящая повязка — если кровотечение остановлено давлением или давление невозможно.",
-            "3. Жгут — при обширном повреждении/отрыве конечности или неэффективности п. 1–2.",
-            "Дополнительно (по учебным программам): пальцевое прижатие, максимальное сгибание.",
-            "При множественных кровотечениях — сначала самое интенсивное / артериальное.",
-            "Не переходите к жгуту «на всякий случай» — только по показаниям.",
-        ],
-        page_no=5,
-    )
-
-    add_content_slide(
-        prs,
-        "ПРИОРИТЕТ ПРИ МНОЖЕСТВЕННЫХ ТРАВМАХ",
-        [
-            "Правило: сначала угрожающее жизни кровотечение.",
-            "Затем — проходимость дыхательных путей и дыхание / СЛР при необходимости.",
-            "Затем — остальные кровотечения и раны.",
-            "Затем — иммобилизация переломов, повязки, оптимальное положение.",
-            "При нескольких пострадавших — приоритет детям и тем, у кого массивное кровотечение.",
-            "Не застревайте на одной «неопасной» ране, пока не осмотрены все критические зоны.",
-        ],
-        page_no=6,
-    )
-
-    add_section_divider(prs, "Травматический шок: признаки и профилактика", 7)
-    add_image_slide(prs, PAGES / "page_15.png")
-    add_image_slide(prs, PAGES / "page_16.png")
-
-    add_content_slide(
-        prs,
-        "ПРОФИЛАКТИКА ТРАВМАТИЧЕСКОГО ШОКА — АКЦЕНТЫ",
-        [
-            "Остановить кровотечение как можно раньше.",
-            "Придать оптимальное положение тела (с учётом травмы).",
-            "Иммобилизировать повреждённые конечности — меньше боль и кровопотеря.",
-            "Защитить от переохлаждения: укрыть, изотермическое покрывало.",
-            "Не давать есть и пить при тяжёлой травме / подозрении на повреждение органов.",
-            "Обеспечить покой, психологическую поддержку, контроль сознания и дыхания.",
-        ],
-        page_no=10,
-    )
-
-    add_section_divider(prs, "Подробный осмотр после остановки кровотечения", 11)
-    add_image_slide(prs, PAGES / "page_17.png")
-    add_image_slide(prs, PAGES / "page_18.png")
-
-    add_content_slide(
-        prs,
-        "ПОРЯДОК ПОДРОБНОГО ОСМОТРА",
-        [
-            "Голова → шея → грудь → живот и таз → ноги → руки (спина — при возможности безопасно).",
-            "При наличии сознания — параллельно коротко расспросите о жалобах и механизме травмы.",
-            "Ищите раны, деформации, болезненность, нарушение функции, признаки внутреннего кровотечения.",
-            "На каждом этапе сразу выполняйте необходимые меры (повязка, фиксация, холод).",
-            "Не «собирайте» все находки без действий — устраняйте угрозы по мере выявления.",
-        ],
-        page_no=14,
-    )
-
-    add_content_slide(
-        prs,
-        "ДЕЙСТВИЯ ПОСЛЕ ОСТАНОВКИ КРОВОТЕЧЕНИЯ",
-        [
-            "Контролируйте повязку: при промокании усильте, не снимая нижние слои.",
-            "Проверяйте признаки жизни: сознание, дыхание, цвет кожи, жалобы.",
-            "Следите за жгутом: время, видимость, записка; не ослабляйте без необходимости.",
-            "Согрейте пострадавшего, обеспечьте покой.",
-            "Повторите вызов СМП при ухудшении; сообщите диспетчеру динамику.",
-            "Передайте бригаде: что случилось, что сделано, время наложения жгута.",
-        ],
-        page_no=15,
-    )
-
-    add_content_slide(
-        prs,
-        "КОГДА И КАК ОСЛАБЛЯТЬ ЖГУТ",
-        [
-            "Планово ослаблять жгут на месте не рекомендуется — риск повторной массивной кровопотери.",
-            "Если время превысило допустимое (60 мин / 30 мин) и СМП задерживается:",
-            "— подготовьте прямое давление / давящую повязку;",
-            "— медленно ослабьте жгут, оценивая кровотечение;",
-            "— если кровь снова бьёт струёй — немедленно затяните жгут вновь и обновите время;",
-            "— если кровотечение контролируется давлением — оставьте давящую повязку, жгут можно оставить ослабленным рядом (по ситуации обучения).",
-            "Решение о снятии принимает, как правило, медработник; ваша задача — не допустить кровопотери.",
-        ],
-        page_no=16,
-        alert_indices={1},
-        highlight_box="Лимит жгута: ≤ 60 мин в тёплое время года · ≤ 30 мин в холодное!",
-    )
-
-    add_summary_slide(prs, [
-        "Алгоритм: безопасность → обзорный осмотр → остановка крови → признаки жизни → СМП → подробный осмотр.",
+    summary_slide(prs, [
+        "Алгоритм: безопасность → обзорный осмотр → остановка крови → признаки жизни → СМП.",
         "Способы: от простого к сложному — давление → повязка → жгут.",
         "Профилактика шока: кровь, положение, иммобилизация, тепло.",
-        "После остановки — контроль повязки/жгута и состояния до передачи СМП.",
-    ], page_no=17)
-    add_thanks_slide(prs)
+        "После остановки — контроль повязки / жгута и состояния до передачи СМП.",
+    ])
+    thanks_slide(prs)
 
-    out = OUT / "Последовательность_остановки_кровотечения.pptx"
-    prs.save(out)
-    return out
+    path = OUT / "Последовательность_остановки_кровотечения.pptx"
+    prs.save(path)
+    return path
 
 
 # ───────────────────── ПРЕЗЕНТАЦИЯ 5 ─────────────────────
 
 def build_pres5():
     prs = new_prs()
-    add_title_slide(
+    title_slide(
         prs,
         "Остановка кровотечения при ранениях различных областей тела",
-        "Теоретический модуль · п. 2.5 Приложения № 2 к ПП РФ № 2464",
-        "Курс первой помощи · Тема 2",
+        "Теоретический модуль · п. 2.5",
     )
-    add_toc_slide(prs, "Содержание", [
+    toc_slide(prs, [
         "Голова, глаза, нос, носовое кровотечение",
-        "Шея, грудь, инородный предмет в ране",
-        "Живот, таз, конечности, позвоночник",
-        "Отрыв конечности и правила перемещения",
-    ], page_no=2)
+        "Шея, грудь, инородный предмет",
+        "Живот, таз, конечности",
+        "Позвоночник, отрыв конечности, перемещение",
+    ])
 
-    add_section_divider(prs, "Голова · глаза · нос", 3)
-    add_image_slide(prs, PAGES / "page_19.png")
-    add_image_slide(prs, PAGES / "page_20.png")
-    add_image_slide(prs, PAGES / "page_14.png")  # носовое кровотечение
+    section_slide(prs, "Голова · глаза · нос")
 
-    add_content_slide(
-        prs,
-        "НОСОВОЕ КРОВОТЕЧЕНИЕ — КЛЮЧЕВЫЕ ШАГИ",
+    content_slide(prs, "Травма головы", [
+        "Остановка кровотечения прямым давлением на рану.",
+        "Нельзя давить при открытой черепно-мозговой травме.",
+        "Альтернатива / дополнение — давящая повязка.",
+        "При потере сознания — устойчивое боковое положение.",
+        "Контроль дыхания и сознания до прибытия СМП.",
+    ])
+
+    content_slide(prs, "Травмы глаза и носа", [
+        "Глаз: стерильная повязка на оба глаза.",
+        "Не извлекать инородные тела из глаза.",
+        "Нос (травма): усадить, голова слегка вперёд, зажать нос, холод на переносицу.",
+        "Не запрокидывать голову назад.",
+        "При деформации носа / обильном кровотечении — вызвать СМП.",
+    ])
+
+    content_slide(prs, "Носовое кровотечение — шаги", [
+        "Усадить, голову слегка наклонить вперёд.",
+        "Зажать крылья носа на 10–15 минут непрерывно.",
+        "Приложить холод на переносицу.",
+        "Не высмаркиваться.",
+        "При обильном / повторном кровотечении, слабости, травме головы — СМП.",
+    ])
+
+    section_slide(prs, "Шея и грудь")
+
+    content_slide(
+        prs, "Травма шеи: артерия или вена",
         [
-            "Усадить, голову слегка наклонить вперёд (не запрокидывать!).",
-            "Зажать нос (крылья носа) на 10–15 минут непрерывно.",
-            "Приложить холод на переносицу / затылок.",
-            "Не высмаркиваться, не тампонировать ватой глубоко без навыка.",
-            "При травме носа с деформацией — холод, покой, вызов СМП.",
-            "При обильном/повторном кровотечении, слабости, травме головы — СМП обязательно.",
+            "Артериальное (сонная): алая кровь, пульсирующая струя.",
+            "Венозное (яремные): тёмная обильная струя; риск воздушной эмболии.",
+            "Прямое давление на рану (не пережимать обе сонные артерии).",
+            "Давящая повязка через плечо / вокруг — не тугая круговая на шее.",
+            "Фиксация шеи при перемещении.",
+            "Срочный вызов СМП.",
         ],
-        page_no=7,
+        highlight="На шею жгут НЕ накладывают. Не сдавливайте дыхательные пути.",
     )
 
-    add_section_divider(prs, "Шея", 8)
-    add_image_slide(prs, PAGES / "page_21.png")
+    content_slide(prs, "Травма груди", [
+        "Придать полусидячее положение (если нет травмы позвоночника / шока).",
+        "Наложить герметизирующую (окклюзионную) повязку.",
+        "При инородном предмете — обложить салфетками, повязка поверх.",
+        "Инородный предмет НЕ извлекать.",
+        "Контролировать дыхание; при ухудшении сообщить СМП.",
+    ])
 
-    add_content_slide(
-        prs,
-        "КРОВОТЕЧЕНИЕ ПРИ ТРАВМЕ ШЕИ: АРТЕРИЯ ИЛИ ВЕНА",
+    # Схема окклюзионной повязки
+    slide = blank(prs)
+    y0 = title_bar(slide, "Окклюзионная повязка — схема")
+    steps = [
+        ("1", "Полусидячее положение"),
+        ("2", "Воздухонепроницаемый материал на рану"),
+        ("3", "Фиксация пластырем (клапан / герметично)"),
+        ("4", "При сквозном — закрыть вход и выход"),
+        ("5", "Контроль дыхания"),
+    ]
+    y = y0 + Emu(300000)
+    for num, txt in steps:
+        add_flow_step(slide, Emu(800000), y, Emu(22800000), Emu(1400000), num, txt, accent=(num == "2"))
+        y += Emu(1650000)
+
+    content_slide(
+        prs, "Инородный предмет в ране",
         [
-            "Артериальное (сонная): алая кровь, пульсирующая струя, очень быстрая потеря крови.",
-            "Венозное (яремные вены): тёмная кровь, равномерная обильная струя; риск воздушной эмболии.",
-            "Действия: прямое давление на рану (осторожно, не пережимать обе сонные артерии).",
-            "Давящая повязка через плечо / вокруг (не круговая тугая на шее!).",
-            "Прижать рану и одновременно зафиксировать шею при перемещении.",
-            "Пострадавшего не оставлять; срочный вызов СМП.",
+            "НЕ ИЗВЛЕКАТЬ — предмет может тампонировать сосуд.",
+            "Обложить салфетками / бинтами валиками вокруг.",
+            "Давящая повязка поверх валиков с фиксацией предмета.",
+            "Остановить кровотечение вокруг, не продавливая предмет вглубь.",
+            "Иммобилизировать область, вызвать СМП.",
         ],
-        page_no=10,
-        highlight_box="На шею жгут НЕ накладывают. Не сдавливайте дыхательные пути повязкой.",
+        highlight="Правило: зафиксировать — не извлекать!",
     )
 
-    add_section_divider(prs, "Грудь", 11)
-    add_image_slide(prs, PAGES / "page_22.png")
+    section_slide(prs, "Живот · таз · конечности")
 
-    add_content_slide(
-        prs,
-        "ОККЛЮЗИОННАЯ (ГЕРМЕТИЗИРУЮЩАЯ) ПОВЯЗКА — СХЕМА",
-        [
-            "1. Придать полусидячее положение (если нет травмы позвоночника / шока).",
-            "2. На рану груди положить воздухонепроницаемый материал (плёнка, оболочка от ППИ, клеёнка).",
-            "3. Закрепить пластырем с трёх сторон (клапан) или полностью — по обучению/комплектации.",
-            "4. Цель — уменьшить подсасывание воздуха в плевральную полость.",
-            "5. Контролировать дыхание; при ухудшении сообщить СМП.",
-            "6. При сквозном ранении закрыть оба отверстия (вход и выход).",
-        ],
-        page_no=13,
-    )
+    content_slide(prs, "Закрытая травма живота и таза", [
+        "Вызвать скорую помощь.",
+        "Положить холод на живот.",
+        "Положение: на спине, валик под полусогнутыми разведёнными ногами.",
+        "Не кормить и не поить.",
+        "Контроль признаков внутреннего кровотечения и шока.",
+    ])
 
-    add_content_slide(
-        prs,
-        "ИНОРОДНЫЙ ПРЕДМЕТ В РАНЕ",
-        [
-            "НЕ ИЗВЛЕКАТЬ инородный предмет — он может тампонировать сосуд.",
-            "Обложить предмет салфетками/бинтами валиками вокруг.",
-            "Наложить давящую повязку поверх валиков, фиксируя предмет.",
-            "Остановить наружное кровотечение вокруг, не продавливая предмет вглубь.",
-            "Иммобилизировать область ранения, вызвать СМП.",
-            "Контролировать сознание, дыхание, признаки шока.",
-        ],
-        page_no=14,
-        highlight_box="Правило: зафиксировать — не извлекать!",
-    )
-
-    add_section_divider(prs, "Живот и таз", 15)
-    add_image_slide(prs, PAGES / "page_23.png")
-    add_image_slide(prs, PAGES / "page_24.png")
-
-    add_content_slide(
-        prs,
-        "ОТКРЫТАЯ ТРАВМА ЖИВОТА — ВАЖНО",
+    content_slide(
+        prs, "Открытая травма живота",
         [
             "Выпавшие органы НЕ вправлять в рану.",
-            "Накрыть влажной (чистой) тканью / салфетками, обложить валиками.",
+            "Накрыть влажной чистой тканью / салфетками, обложить валиками.",
             "Поверх валиков — повязка без давления на органы.",
-            "Холод рядом (не на сами органы напрямую через давление).",
-            "Положение: на спине, ноги полусогнуты и разведены (как при закрытой травме — по состоянию).",
-            "Не поить и не кормить; срочный вызов СМП.",
+            "Холод — рядом, без прямого давления на органы.",
+            "Срочный вызов СМП.",
         ],
-        page_no=18,
+        highlight="Органы брюшной полости не вправлять!",
     )
 
-    add_section_divider(prs, "Конечности", 19)
-    add_image_slide(prs, PAGES / "page_25.png")
-    add_image_slide(prs, PAGES / "page_26.png")
+    content_slide(prs, "Травма конечностей", [
+        "Сначала остановить кровотечение.",
+        "Затем иммобилизация: два соседних сустава (выше и ниже).",
+        "Шины поверх одежды; подручные средства: палки, доски, картон.",
+        "При открытом переломе — не класть шину на выступающие отломки.",
+        "Костные отломки не вправлять.",
+        "Иммобилизация — создание неподвижности повреждённой части тела.",
+    ])
 
-    add_content_slide(
-        prs,
-        "ИММОБИЛИЗАЦИЯ ПРИ ПЕРЕЛОМЕ С КРОВОТЕЧЕНИЕМ",
+    content_slide(
+        prs, "Травматическая ампутация",
         [
-            "Сначала остановите кровотечение (давление / повязка / жгут по показаниям).",
-            "Затем иммобилизация: обездвижить два соседних сустава (выше и ниже перелома).",
-            "Шины — поверх одежды; при открытом переломе не класть шину на выступающие отломки.",
-            "Костные отломки не вправлять.",
-            "После иммобилизации — контроль повязки и пальцев (цвет, чувствительность).",
-            "Признаками успеха: меньше боль при движении, кровотечение не возобновляется.",
-        ],
-        page_no=22,
-    )
-
-    add_content_slide(
-        prs,
-        "ТРАВМАТИЧЕСКАЯ АМПУТАЦИЯ (ОТРЫВ КОНЕЧНОСТИ)",
-        [
-            "Немедленно наложите жгут выше места отрыва (на плечо/бедро).",
+            "Немедленно наложите жгут выше места отрыва (плечо / бедро).",
             "Давящая повязка на культю; прямое давление при необходимости.",
             "Записка со временем наложения жгута.",
-            "Ампутированный сегмент: завернуть в чистую ткань → пакет → второй пакет со льдом/холодом (сегмент не мочить и не класть на лёд напрямую).",
+            "Сегмент: чистая ткань → пакет → второй пакет со холодом (не мочить).",
             "Передать сегмент вместе с пострадавшим бригаде СМП.",
-            "Профилактика шока: положение, тепло, контроль сознания и дыхания.",
+            "Профилактика шока: положение, тепло, контроль сознания.",
         ],
-        page_no=23,
-        alert_indices={0},
-        highlight_box="Жгут при отрыве конечности — показан. t max ≤ 60 мин / 30 мин.",
+        alert_idx={0},
+        highlight="Жгут при отрыве показан. t max ≤ 60 мин / 30 мин.",
     )
 
-    add_section_divider(prs, "Позвоночник", 24)
-    add_image_slide(prs, PAGES / "page_27.png")
+    section_slide(prs, "Позвоночник")
 
-    add_content_slide(
-        prs,
-        "ПЕРЕМЕЩЕНИЕ ПРИ ТРАВМЕ ПОЗВОНОЧНИКА",
-        [
-            "Перемещать только при угрозе жизни на месте или для эвакуации по указанию служб.",
-            "Поверхность: ровная, жёсткая, горизонтальная (щит, дверь, носилки).",
-            "Нужно несколько человек (обычно 3–5): синхронно поддерживать голову–туловище–ноги.",
-            "Один удерживает голову и шейный отдел постоянно (осевая фиксация).",
-            "Команда «раз–два–три» — перекладывание одним движением, без скручивания.",
-            "Фиксация шеи вручную / подручными средствами / табельным воротником (при наличии).",
-        ],
-        page_no=26,
-    )
+    content_slide(prs, "Травма позвоночника", [
+        "Перемещать только при угрозе жизни на месте или для эвакуации.",
+        "Поверхность: ровная, жёсткая, горизонтальная.",
+        "Нужно несколько человек (обычно 3–5).",
+        "Один постоянно удерживает голову и шейный отдел (осевая фиксация).",
+        "Перекладывание одним движением, без скручивания.",
+        "Фиксация шеи вручную / подручными средствами / воротником.",
+    ])
 
-    add_summary_slide(prs, [
-        "Голова/глаза/нос: повязки, боковое положение при потере сознания; нос — вперёд, зажим, холод.",
+    summary_slide(prs, [
+        "Голова / глаза / нос: повязки; при потере сознания — боковое положение.",
         "Шея и грудь: давление без кругового жгута; окклюзионная повязка; предмет не извлекать.",
         "Живот: органы не вправлять; конечности — кровь, затем иммобилизация двух суставов.",
-        "Позвоночник — только жёсткая поверхность и команда из нескольких человек с фиксацией шеи.",
-    ], page_no=27)
-    add_thanks_slide(prs)
+        "Позвоночник — жёсткая поверхность и команда с фиксацией шеи.",
+    ])
+    thanks_slide(prs)
 
-    out = OUT / "Кровотечение_при_ранениях_областей_тела.pptx"
-    prs.save(out)
-    return out
+    path = OUT / "Кровотечение_при_ранениях_областей_тела.pptx"
+    prs.save(path)
+    return path
 
 
 def main():
-    outs = []
+    paths = []
     for fn in (build_pres1, build_pres2, build_pres3, build_pres4, build_pres5):
-        path = fn()
-        print(f"OK: {path} ({path.stat().st_size // 1024} KB)")
-        outs.append(path)
-    # README
+        p = fn()
+        print(f"OK: {p.name} · {p.stat().st_size // 1024} KB")
+        paths.append(p)
+
+    # Verify no pictures in any presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+    for p in paths:
+        prs = Presentation(str(p))
+        pics = 0
+        for s in prs.slides:
+            for sh in s.shapes:
+                if sh.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                    pics += 1
+        print(f"  {p.name}: {len(prs.slides)} slides, pictures={pics}")
+
     readme = OUT / "README.md"
     readme.write_text(
         "# Тема 2. Оказание первой помощи при наружных кровотечениях\n\n"
-        "Пять самостоятельных презентаций для занятий (перекомпоновка исходного PDF "
-        "«Оказание первой помощи при наружных кровотечениях» + доработка по Приказу Минздрава РФ № 220н "
-        "и Приложению № 2 к ПП РФ № 2464).\n\n"
-        "| Файл | Пункт программы |\n|---|---|\n"
-        "| `Кровотечение_и_обзорный_осмотр.pptx` | п. 2.1 |\n"
-        "| `Признаки_наружного_кровотечения.pptx` | п. 2.2 |\n"
-        "| `Способы_временной_остановки_кровотечения.pptx` | п. 2.3 |\n"
-        "| `Последовательность_остановки_кровотечения.pptx` | п. 2.4 |\n"
-        "| `Кровотечение_при_ранениях_областей_тела.pptx` | п. 2.5 |\n\n"
-        "В каждой презентации: титул, оглавление, исходные слайды (как изображения страниц PDF), "
-        "добавленные слайды с недостающей информацией, резюме, «Благодарим за внимание».\n",
+        "Пять **редактируемых** презентаций (Open Sans, единый стиль).\n\n"
+        "| Файл | Пункт |\n|---|---|\n"
+        "| `Кровотечение_и_обзорный_осмотр.pptx` | 2.1 |\n"
+        "| `Признаки_наружного_кровотечения.pptx` | 2.2 |\n"
+        "| `Способы_временной_остановки_кровотечения.pptx` | 2.3 |\n"
+        "| `Последовательность_остановки_кровотечения.pptx` | 2.4 |\n"
+        "| `Кровотечение_при_ранениях_областей_тела.pptx` | 2.5 |\n\n"
+        "Слайды не вставлены картинками: текст, таблицы и схемы — объекты PowerPoint.\n"
+        "Сборка: `build_tema2_presentations.py`.\n",
         encoding="utf-8",
     )
-    print("Done:", len(outs), "files")
+    print("Done.")
 
 
 if __name__ == "__main__":
