@@ -167,13 +167,13 @@ def bg(slide):
 
 
 def src_header(slide, title: str):
-    """Заголовок в духе исходника + редактируемый текст."""
+    """Заголовок в стиле исходника: крупный CAPS, линия, подзаголовок."""
     bg(slide)
-    tbox(slide, M, Emu(300000), Emu(22000000), Emu(900000),
-         title, size=32, bold=True, color=TEXT)  # крупный заголовок исходника
-    rect(slide, M, Emu(1250000), Emu(22000000), Emu(20000), LINE)
-    tbox(slide, M, Emu(1350000), Emu(22000000), Emu(450000),
-         SUB, size=16, bold=False, color=MUTED)
+    tbox(slide, M, Emu(280000), Emu(22000000), Emu(850000),
+         title, size=30, bold=True, color=TEXT)
+    rect(slide, M, Emu(1150000), Emu(16000000), Emu(35000), RGBColor(0x55, 0x55, 0x55))
+    tbox(slide, M, Emu(1250000), Emu(22000000), Emu(450000),
+         SUB, size=14, bold=False, color=MUTED)
 
 
 def new_header(slide, title: str):
@@ -187,25 +187,25 @@ def new_header(slide, title: str):
 # ───────── служебные новые слайды ─────────
 
 def slide_title_src(prs):
-    """Титул — текст исходника, редактируемый (не картинка)."""
+    """Титул в стиле исходника — фигуры + редактируемый текст."""
     slide = blank(prs)
-    bg(slide)
-    rect(slide, 0, Emu(4200000), Emu(4000000), Emu(2800000), BG_BAR)
-    rect(slide, Emu(23000000), 0, Emu(1384000), SLIDE_H, BG_BAR)
-    tbox(slide, M, Emu(4800000), Emu(21000000), Emu(1800000),
+    rect(slide, 0, 0, SLIDE_W, SLIDE_H, RGBColor(0xF2, 0xF2, 0xF2))
+    rect(slide, Emu(17500000), 0, Emu(6884000), SLIDE_H, BG_BAR)
+    rect(slide, 0, Emu(4500000), Emu(4500000), Emu(2800000), BG_BAR)
+    tbox(slide, M, Emu(5000000), Emu(16500000), Emu(1600000),
          "ОКАЗАНИЕ ПЕРВОЙ ПОМОЩИ ПРИ НАРУЖНЫХ\nКРОВОТЕЧЕНИЯХ И ТРАВМАХ",
-         size=36, bold=True, color=TEXT)
-    rect(slide, M, Emu(6800000), Emu(14000000), Emu(25000), TEXT)
+         size=34, bold=True, color=TEXT)
+    rect(slide, M, Emu(6800000), Emu(14000000), Emu(35000), TEXT)
     return slide
 
 
 def slide_thanks_src(prs):
     slide = blank(prs)
-    bg(slide)
-    rect(slide, Emu(23000000), 0, Emu(1384000), SLIDE_H, BG_BAR)
-    tbox(slide, M, Emu(5500000), Emu(21000000), Emu(1200000),
+    rect(slide, 0, 0, SLIDE_W, SLIDE_H, RGBColor(0xF2, 0xF2, 0xF2))
+    rect(slide, Emu(17500000), 0, Emu(6884000), SLIDE_H, BG_BAR)
+    tbox(slide, M, Emu(5500000), Emu(16000000), Emu(1200000),
          "БЛАГОДАРИМ ЗА ВНИМАНИЕ", size=40, bold=True, color=TEXT)
-    rect(slide, M, Emu(6900000), Emu(10000000), Emu(25000), TEXT)
+    rect(slide, M, Emu(6900000), Emu(10000000), Emu(35000), TEXT)
     return slide
 
 
@@ -322,19 +322,21 @@ def slide_new_compare(prs, title, left_t, left_items, right_t, right_items):
 # ───────── исходные слайды как РЕДАКТИРУЕМЫЙ контент + картинки ─────────
 
 def src_bleed_definition(prs):
-    """Стр.2 — понятие кровотечение (текст исходника)."""
+    """Стр.2 — как в исходнике: слева персонаж, облачко с определением, справа признаки."""
     slide = blank(prs)
     src_header(slide, "ПОНЯТИЕ «КРОВОТЕЧЕНИЕ»")
-    # определение
-    round_rect(slide, M, Emu(2000000), Emu(10000000), Emu(4500000), CREAM)
-    tbox(slide, M + Emu(400000), Emu(2300000), Emu(9200000), Emu(3800000),
+    # слева — иллюстрация (отдельный объект)
+    pic_fit(slide, "def_man.png", M, Emu(2000000), Emu(7000000), Emu(10500000))
+    # облачко с определением (редактируемый текст)
+    round_rect(slide, M + Emu(6200000), Emu(2100000), Emu(7500000), Emu(4200000), CREAM)
+    tbox(slide, M + Emu(6600000), Emu(2400000), Emu(6700000), Emu(3600000),
          "Под кровотечением понимают ситуацию, когда кровь по разным причинам "
          "покидает сосудистое русло, что приводит к острой кровопотере.",
-         size=24, color=TEXT)
-    # признаки
-    tbox(slide, M + Emu(11000000), Emu(2000000), Emu(11000000), Emu(600000),
-         "Основные признаки острой кровопотери:", size=24, bold=True, color=TEXT)
-    bullets(slide, M + Emu(11000000), Emu(2700000), Emu(11000000), Emu(8500000), [
+         size=22, color=TEXT)
+    # справа — признаки (редактируемый список)
+    tbox(slide, M + Emu(14000000), Emu(2000000), Emu(9000000), Emu(700000),
+         "Основные признаки острой кровопотери:", size=22, bold=True, color=TEXT)
+    bullets(slide, M + Emu(14000000), Emu(2800000), Emu(9000000), Emu(9000000), [
         "резкая общая слабость;",
         "чувство жажды;",
         "головокружение;",
@@ -343,46 +345,45 @@ def src_bleed_definition(prs):
         "бледная, влажная и холодная кожа;",
         "учащённое сердцебиение;",
         "частое дыхание.",
-    ], size=22, marker="☑")
+    ], size=20, marker="☐")
     return slide
 
 
 def src_bleed_types(prs):
-    """Стр.3 — виды кровотечения + иллюстрации как объекты."""
+    """Стр.3 — три колонки: подпись (текст) + иллюстрация (объект)."""
     slide = blank(prs)
     src_header(slide, "ПРИЗНАКИ РАЗЛИЧНЫХ ВИДОВ НАРУЖНОГО КРОВОТЕЧЕНИЯ")
     cols = [
-        ("bleed_arterial.png", "Артериальное\nкровотечение"),
-        ("bleed_venous.png", "Венозное\nкровотечение"),
-        ("bleed_capillary.png", "Капиллярное\nкровотечение"),
+        ("bleed_arterial.png", "Артериальное кровотечение"),
+        ("bleed_venous.png", "Венозное кровотечение"),
+        ("bleed_capillary.png", "Капиллярное кровотечение"),
     ]
     x = M
     cw = Emu(7200000)
     for img, title in cols:
-        tbox(slide, x, Emu(1900000), cw, Emu(1000000), title, size=24, bold=True,
+        tbox(slide, x, Emu(1900000), cw, Emu(800000), title, size=24, bold=True,
              color=TEXT, align=PP_ALIGN.CENTER)
-        rect(slide, x, Emu(3000000), cw, Emu(9000000), WHITE, line=LINE)
-        pic_fit(slide, img, x + Emu(150000), Emu(3200000), cw - Emu(300000), Emu(8600000))
+        pic_fit(slide, img, x + Emu(200000), Emu(2900000), cw - Emu(400000), Emu(9000000))
         x += cw + Emu(300000)
     return slide
 
 
 def src_overview(prs):
-    """Стр.4 — обзорный осмотр."""
+    """Стр.4 — как в исходнике: слева картинка, справа текст."""
     slide = blank(prs)
     src_header(slide, "ОБЗОРНЫЙ ОСМОТР ПОСТРАДАВШЕГО")
-    tbox(slide, M, Emu(2200000), Emu(11000000), Emu(3500000),
+    # слева — иллюстрация (отдельный объект)
+    pic_fit(slide, "overview_exam.png", M, Emu(2000000), Emu(12000000), Emu(10500000))
+    # справа — редактируемый текст исходника
+    tbox(slide, M + Emu(12800000), Emu(4500000), Emu(10000000), Emu(4500000),
          "Обзорный осмотр производится очень быстро, "
          "в течение 1-2 секунд, с головы до ног",
-         size=28, bold=True, color=TEXT)
-    rect(slide, M + Emu(12000000), Emu(2000000), Emu(10000000), Emu(9500000), WHITE, line=LINE)
-    pic_fit(slide, "overview_exam.png", M + Emu(12200000), Emu(2200000),
-            Emu(9600000), Emu(9100000))
+         size=28, bold=False, color=TEXT)
     return slide
 
 
 def src_pressure_bandage(prs):
-    """Стр.5."""
+    """Стр.5 — две колонки: подпись + картинка."""
     slide = blank(prs)
     src_header(slide, "СПОСОБЫ ВРЕМЕННОЙ ОСТАНОВКИ НАРУЖНОГО КРОВОТЕЧЕНИЯ")
     for i, (img, title) in enumerate([
@@ -392,26 +393,24 @@ def src_pressure_bandage(prs):
         x = M + i * Emu(11500000)
         tbox(slide, x, Emu(1900000), Emu(11000000), Emu(700000), title, size=26, bold=True,
              color=TEXT, align=PP_ALIGN.CENTER)
-        rect(slide, x, Emu(2700000), Emu(11000000), Emu(9500000), WHITE, line=LINE)
-        pic_fit(slide, img, x + Emu(200000), Emu(2900000), Emu(10600000), Emu(9100000))
+        pic_fit(slide, img, x + Emu(300000), Emu(2800000), Emu(10400000), Emu(9500000))
     return slide
 
 
 def src_artery_grid(prs, title_note: str, cells: list[tuple[str, str]]):
-    """Пальцевое прижатие: иллюстрации + редактируемый текст исходника."""
+    """Пальцевое прижатие: сверху картинка, снизу текст (как в исходнике)."""
     slide = blank(prs)
     src_header(slide, "СПОСОБЫ ВРЕМЕННОЙ ОСТАНОВКИ НАРУЖНОГО КРОВОТЕЧЕНИЯ")
-    tbox(slide, M, Emu(1750000), Emu(23000000), Emu(500000),
-         "Пальцевое прижатие артерии", size=24, bold=True, color=ACCENT_BLUE)
+    tbox(slide, M, Emu(1700000), Emu(23000000), Emu(450000),
+         "Пальцевое прижатие артерии", size=22, bold=True, color=MUTED)
     n = len(cells)
     gap = Emu(250000)
     cw = (Emu(23000000) - gap * (n - 1)) // n
     for i, (img, text) in enumerate(cells):
         x = M + i * (cw + gap)
-        rect(slide, x, Emu(2400000), cw, Emu(9800000), WHITE, line=LINE)
-        pic_fit(slide, img, x + Emu(100000), Emu(2550000), cw - Emu(200000), Emu(5200000))
-        tbox(slide, x + Emu(150000), Emu(8000000), cw - Emu(300000), Emu(4000000),
-             text, size=16, color=TEXT)
+        pic_fit(slide, img, x + Emu(50000), Emu(2300000), cw - Emu(100000), Emu(5200000))
+        tbox(slide, x + Emu(100000), Emu(7800000), cw - Emu(200000), Emu(4500000),
+             text, size=15, color=TEXT)
     return slide
 
 
@@ -462,20 +461,20 @@ def src_tourniquet(prs):
 
 
 def src_improvised(prs):
+    """Стр.13 — слева текст, справа картинка."""
     slide = blank(prs)
     src_header(slide, "СПОСОБЫ ВРЕМЕННОЙ ОСТАНОВКИ НАРУЖНОГО КРОВОТЕЧЕНИЯ")
-    tbox(slide, M, Emu(2000000), Emu(11000000), Emu(800000),
+    tbox(slide, M, Emu(2000000), Emu(11000000), Emu(1000000),
          "В качестве импровизированного жгута можно использовать подручные средства:",
          size=24, bold=True, color=TEXT)
-    bullets(slide, M, Emu(3000000), Emu(11000000), Emu(6000000), [
+    bullets(slide, M, Emu(3200000), Emu(11000000), Emu(6000000), [
         "тесьму,",
         "платок,",
         "галстук",
         "и другие подобные вещи.",
-    ], size=28, marker="☑")
-    rect(slide, M + Emu(12000000), Emu(2000000), Emu(10000000), Emu(10000000), WHITE, line=LINE)
-    pic_fit(slide, "improvised_tq.png", M + Emu(12200000), Emu(2200000),
-            Emu(9600000), Emu(9600000))
+    ], size=28, marker="☐")
+    pic_fit(slide, "improvised_tq.png", M + Emu(12000000), Emu(2000000),
+            Emu(10000000), Emu(10000000))
     return slide
 
 
