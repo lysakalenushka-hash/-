@@ -30,14 +30,14 @@ LINE = RGBColor(0x99, 0x99, 0x99)
 TEXT = RGBColor(0x33, 0x33, 0x33)
 MUTED = RGBColor(0x77, 0x77, 0x77)
 NUM_BG = RGBColor(0x60, 0x60, 0x60)
-# бирюза из эталона (speech bubble)
-TEAL = RGBColor(141, 219, 205)
-TEAL_DARK = RGBColor(0x1A, 0xA0, 0x90)
-TEAL_TEXT = RGBColor(0x0D, 0x6B, 0x60)
+# нейтральные серые акценты (без зелёного/бирюзы)
+TEAL = RGBColor(0xDD, 0xDD, 0xDD)       # заливка облачков / карточек
+TEAL_DARK = RGBColor(0x60, 0x60, 0x60)  # обводка / средняя заливка
+TEAL_TEXT = RGBColor(0x33, 0x33, 0x33)  # текст на акцентах
 ACCENT_RED = RGBColor(0xED, 0x1C, 0x24)
 BANNER = RGBColor(65, 87, 98)
-TABLE_HDR = RGBColor(0x1A, 0xA0, 0x90)
-ROW_ALT = RGBColor(0xF0, 0xFA, 0xF8)
+TABLE_HDR = RGBColor(0x55, 0x55, 0x55)
+ROW_ALT = RGBColor(0xF2, 0xF2, 0xF2)
 
 FONT = "Calibri"
 SUBTITLE = "Оказание первой помощи при наружных кровотечениях"
@@ -214,7 +214,7 @@ def content_header(slide, title: str, num: int | None = None, subtitle: str = SU
 
 
 def teal_bubble(slide, l, t, w, h, text, *, size=13):
-    """Бирюзовое «облачко» как в эталоне."""
+    """Серое «облачко»-выноска (нейтральный акцент)."""
     sh = round_rect(slide, l, t, w, h, TEAL, line=TEAL_DARK)
     tbox(slide, l + Emu(200000), t + Emu(180000), w - Emu(400000), h - Emu(360000),
          text, size=size, color=TEAL_TEXT, anchor=MSO_ANCHOR.MIDDLE)
