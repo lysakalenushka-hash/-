@@ -14,3 +14,5 @@
 python3 presentations/build_bleeding_overview.py
 python3 presentations/build_signs_bleeding.py
 ```
+
+Презентация «Признаки…» **дополняет** «Обзорный осмотр» и не повторяет её слайды.

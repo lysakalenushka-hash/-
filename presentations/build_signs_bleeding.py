@@ -2,9 +2,14 @@
 """
 Презентация: «Признаки наружного кровотечения и кровопотери»
 
+ДОПОЛНЯЕТ (не дублирует) презентацию
+«Кровотечение. Обзорный осмотр пострадавшего»:
+- там: понятие, виды «как выглядят», обзорный осмотр, действия;
+- здесь: углублённое распознавание признаков кровопотери и интенсивности,
+  скрытая кровопотеря, сравнительная таблица, смешанное кровотечение,
+  маскирующие ситуации.
+
 Оформление — как в «Организационно-правовые аспекты оказания первой помощи».
-Содержание — по учебному пособию (Тема 2).
-Редактируемый текст + отдельные Picture-объекты.
 """
 
 from __future__ import annotations
@@ -38,6 +43,7 @@ CREAM = RGBColor(0xF5, 0xF0, 0xE1)
 NUM_BG = RGBColor(0x55, 0x55, 0x55)
 TABLE_HDR = RGBColor(0x44, 0x44, 0x44)
 ROW_ALT = RGBColor(0xF5, 0xF5, 0xF5)
+ACCENT_BLUE = RGBColor(0x00, 0x55, 0xAA)
 
 FONT = "Open Sans"
 SUBTITLE = "Оказание первой помощи при наружных кровотечениях"
@@ -124,28 +130,7 @@ def tbox(slide, l, t, w, h, text, *, size=20, bold=False, color=TEXT,
     return box
 
 
-def rich_tbox(slide, l, t, w, h, parts, *, size=20, color=TEXT,
-              align=PP_ALIGN.LEFT, anchor=MSO_ANCHOR.TOP):
-    box = slide.shapes.add_textbox(l, t, w, h)
-    tf = box.text_frame
-    tf.word_wrap = True
-    try:
-        tf._txBody.bodyPr.set(
-            "anchor",
-            {MSO_ANCHOR.TOP: "t", MSO_ANCHOR.MIDDLE: "ctr", MSO_ANCHOR.BOTTOM: "b"}[anchor],
-        )
-    except Exception:
-        pass
-    p = tf.paragraphs[0]
-    p.alignment = align
-    for text, bold in parts:
-        r = p.add_run()
-        r.text = text
-        font(r, size, bold, color)
-    return box
-
-
-def bullets(slide, l, t, w, h, items, *, size=18, marker="•", alert=None):
+def bullets(slide, l, t, w, h, items, *, size=16, marker="•", alert=None):
     alert = alert or set()
     box = slide.shapes.add_textbox(l, t, w, h)
     tf = box.text_frame
@@ -160,29 +145,11 @@ def bullets(slide, l, t, w, h, items, *, size=18, marker="•", alert=None):
     return box
 
 
-def pic_fit(slide, name, l, t, max_w, max_h):
-    from PIL import Image as PILImage
-    path = asset(name)
-    if not path.exists():
-        rect(slide, l, t, max_w, max_h, WHITE, line=LINE)
-        tbox(slide, l, t + max_h // 2 - Emu(200000), max_w, Emu(400000),
-             f"[нет файла: {name}]", size=12, color=MUTED, align=PP_ALIGN.CENTER)
-        return None
-    with PILImage.open(path) as im:
-        iw, ih = im.size
-    scale = min(float(max_w) / iw, float(max_h) / ih)
-    w, h = int(iw * scale), int(ih * scale)
-    x = int(l + (max_w - w) / 2)
-    y = int(t + (max_h - h) / 2)
-    return slide.shapes.add_picture(str(path), x, y, width=w, height=h)
-
-
 def slide_number(slide, n: int):
     size = Emu(420000)
     top = Emu(2800000)
-    left = Emu(0)
-    rect(slide, left, top, size, size, NUM_BG)
-    tbox(slide, left, top, size, size, str(n), size=14, bold=True, color=WHITE,
+    rect(slide, Emu(0), top, size, size, NUM_BG)
+    tbox(slide, Emu(0), top, size, size, str(n), size=14, bold=True, color=WHITE,
          align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
 
@@ -190,7 +157,7 @@ def content_header(slide, title: str, num: int | None = None):
     rect(slide, 0, 0, SLIDE_W, SLIDE_H, WHITE)
     margin = Emu(700000)
     tbox(slide, margin, Emu(280000), Emu(11000000), Emu(550000),
-         title, size=24, bold=True, color=TEXT)
+         title, size=22, bold=True, color=TEXT)
     rect(slide, margin, Emu(880000), Emu(9000000), Emu(25000), NUM_BG)
     tbox(slide, margin, Emu(950000), Emu(11000000), Emu(350000),
          SUBTITLE, size=12, color=MUTED)
@@ -226,176 +193,252 @@ def slide_thanks(prs):
 def slide_toc(prs, items, num=2):
     slide = blank(prs)
     content_header(slide, "СОДЕРЖАНИЕ", num)
-    y = Emu(1550000)
+    y = Emu(1500000)
     for i, item in enumerate(items, 1):
-        oval(slide, Emu(700000), y, Emu(550000), Emu(550000), NUM_BG)
-        tbox(slide, Emu(700000), y, Emu(550000), Emu(550000), str(i),
-             size=16, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+        oval(slide, Emu(700000), y, Emu(500000), Emu(500000), NUM_BG)
+        tbox(slide, Emu(700000), y, Emu(500000), Emu(500000), str(i),
+             size=15, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
              anchor=MSO_ANCHOR.MIDDLE)
-        tbox(slide, Emu(1450000), y, Emu(10000000), Emu(550000),
-             item, size=17, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
-        y += Emu(850000)
+        tbox(slide, Emu(1400000), y, Emu(10000000), Emu(500000),
+             item, size=16, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
+        y += Emu(780000)
     return slide
 
 
-def slide_definition(prs, num=3):
+def slide_bridge(prs, num=3):
+    """Связь с презентацией про обзорный осмотр — без повтора её содержания."""
     slide = blank(prs)
-    content_header(slide, "ПОНЯТИЕ «КРОВОТЕЧЕНИЕ» И КРОВОПОТЕРЯ", num)
-    pic_fit(slide, "def_man.png", Emu(500000), Emu(1500000),
-            Emu(3000000), Emu(5200000))
-    round_rect(slide, Emu(3300000), Emu(1600000), Emu(8600000), Emu(2800000), CREAM)
-    rich_tbox(
-        slide, Emu(3600000), Emu(1800000), Emu(8000000), Emu(2400000),
-        [
-            ("Под ", False),
-            ("кровотечением понимают", True),
-            (" ситуацию, когда кровь по разным причинам "
-             "(чаще всего в результате травмы) покидает сосудистое русло, "
-             "что приводит к ", False),
-            ("кровопотере", True),
-            (" — безвозвратной утрате части крови.", False),
-        ],
-        size=15, color=TEXT,
-    )
-    tbox(slide, Emu(3300000), Emu(4700000), Emu(8600000), Emu(1800000),
-         "Это сопровождается снижением функции системы кровообращения "
-         "по переносу кислорода и питательных веществ к органам, "
-         "что ведет к ухудшению или прекращению их деятельности.",
-         size=15, color=TEXT)
+    content_header(slide, "ЧЕМ ЭТА ТЕМА ДОПОЛНЯЕТ ОБЗОРНЫЙ ОСМОТР", num)
+    # left — уже изучено
+    rect(slide, Emu(700000), Emu(1500000), Emu(5400000), Emu(4800000), WHITE, line=LINE)
+    rect(slide, Emu(700000), Emu(1500000), Emu(5400000), Emu(700000), BG_BAR)
+    tbox(slide, Emu(900000), Emu(1600000), Emu(5000000), Emu(500000),
+         "Уже в теме «Обзорный осмотр»", size=15, bold=True, color=TEXT,
+         align=PP_ALIGN.CENTER)
+    bullets(slide, Emu(950000), Emu(2450000), Emu(4900000), Emu(3500000), [
+        "понятие кровотечения;",
+        "как выглядят виды кровотечения;",
+        "как провести обзорный осмотр;",
+        "что делать при обнаружении крови.",
+    ], size=15)
+    # right — здесь
+    rect(slide, Emu(6500000), Emu(1500000), Emu(5400000), Emu(4800000), WHITE, line=LINE)
+    rect(slide, Emu(6500000), Emu(1500000), Emu(5400000), Emu(700000), NUM_BG)
+    tbox(slide, Emu(6700000), Emu(1600000), Emu(5000000), Emu(500000),
+         "Разбираем сейчас", size=15, bold=True, color=WHITE,
+         align=PP_ALIGN.CENTER)
+    bullets(slide, Emu(6750000), Emu(2450000), Emu(4900000), Emu(3500000), [
+        "как читать признаки кровопотери;",
+        "когда крови «не видно», а угроза есть;",
+        "как оценить интенсивность;",
+        "сравнение видов и смешанное кровотечение;",
+        "что маскирует признаки.",
+    ], size=15)
     return slide
 
 
-def slide_signs_blood_loss(prs, num=4):
+def slide_signs_groups(prs, num=4):
+    """Углублённый разбор признаков кровопотери по группам."""
     slide = blank(prs)
-    content_header(slide, "ПРИЗНАКИ КРОВОПОТЕРИ", num)
-    left = [
-        "резкая общая слабость;",
-        "чувство жажды;",
-        "головокружение;",
-        "мелькание «мушек» перед глазами;",
-    ]
-    right = [
-        "обморок (чаще при попытке встать);",
-        "бледная, влажная и холодная кожа;",
-        "учащённое сердцебиение;",
-        "частое дыхание.",
-    ]
-    bullets(slide, Emu(700000), Emu(1600000), Emu(5400000), Emu(3200000),
-            left, size=17, marker="☐")
-    bullets(slide, Emu(6500000), Emu(1600000), Emu(5400000), Emu(3200000),
-            right, size=17, marker="☐")
-    round_rect(slide, Emu(700000), Emu(5000000), Emu(11000000), Emu(1400000), CREAM)
-    rect(slide, Emu(700000), Emu(5000000), Emu(100000), Emu(1400000), ACCENT_RED)
-    tbox(slide, Emu(1000000), Emu(5200000), Emu(10400000), Emu(1000000),
-         "Эти признаки возможны при продолжающемся кровотечении, "
-         "при уже остановленном кровотечении и при отсутствии видимой крови "
-         "(в том числе при внутреннем кровотечении).",
-         size=15, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
-    return slide
-
-
-def slide_danger(prs, num=5):
-    slide = blank(prs)
-    content_header(slide, "ОСТРАЯ МАССИВНАЯ КРОВОПОТЕРЯ", num)
-    round_rect(slide, Emu(700000), Emu(1550000), Emu(11000000), Emu(1400000), CREAM)
-    tbox(slide, Emu(950000), Emu(1700000), Emu(10500000), Emu(1100000),
-         "Наиболее опасно интенсивное кровотечение, приводящее к быстрой потере "
-         "большого количества крови, — острая массивная кровопотеря.",
-         size=17, bold=True, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
-    bullets(slide, Emu(700000), Emu(3300000), Emu(11000000), Emu(3200000), [
-        "При повреждении крупных сосудов без остановки кровотечения "
-        "гибель может наступить в течение нескольких минут.",
-        "При кровотечении слабой и средней интенсивности организм обычно "
-        "способен поддерживать жизнь, но кровотечение всё равно нужно остановить.",
-        "Даже «неинтенсивная» кровопотеря может привести к поздним осложнениям "
-        "травмы и ухудшить исход.",
-    ], size=16)
-    return slide
-
-
-def slide_external_def(prs, num=6):
-    slide = blank(prs)
-    content_header(slide, "ЧТО ТАКОЕ НАРУЖНОЕ КРОВОТЕЧЕНИЕ", num)
-    tbox(slide, Emu(700000), Emu(1600000), Emu(11000000), Emu(1200000),
-         "Наружное кровотечение сопровождается повреждением кожных покровов "
-         "и слизистых оболочек, при этом кровь изливается наружу "
-         "в окружающую среду.",
-         size=18, color=TEXT)
-    tbox(slide, Emu(700000), Emu(3100000), Emu(11000000), Emu(500000),
-         "По виду повреждённых сосудов кровотечения бывают:", size=16, bold=True)
-    # four pills
-    labels = ["Артериальное", "Венозное", "Капиллярное", "Смешанное"]
-    x = Emu(700000)
-    for lab in labels:
-        round_rect(slide, x, Emu(3900000), Emu(2600000), Emu(900000), BG_BAR)
-        tbox(slide, x, Emu(3900000), Emu(2600000), Emu(900000), lab,
-             size=16, bold=True, color=TEXT, align=PP_ALIGN.CENTER,
-             anchor=MSO_ANCHOR.MIDDLE)
-        x += Emu(2800000)
-    tbox(slide, Emu(700000), Emu(5200000), Emu(11000000), Emu(1000000),
-         "При оказании первой помощи вид определить сложно — "
-         "ориентируйтесь на интенсивность кровотечения.",
-         size=15, color=MUTED)
-    return slide
-
-
-def slide_types_visual(prs, num=7):
-    slide = blank(prs)
-    content_header(slide, "ПРИЗНАКИ ВИДОВ НАРУЖНОГО КРОВОТЕЧЕНИЯ", num)
-    cols = [
-        ("bleed_arterial.png", "Артериальное",
-         "Пульсирующая алая струя; быстро растекающаяся лужа алого цвета; "
-         "одежда быстро пропитывается кровью. Наиболее опасно."),
-        ("bleed_venous.png", "Венозное",
-         "Кровь тёмно-вишнёвая, вытекает «ручьём». "
-         "Скорость кровопотери меньше, но остановка обязательна."),
-        ("bleed_capillary.png", "Капиллярное",
-         "Ссадины, порезы, царапины. "
-         "Как правило, непосредственной угрозы жизни не представляет."),
+    content_header(slide, "ПРИЗНАКИ КРОВОПОТЕРИ — ПО ГРУППАМ", num)
+    groups = [
+        ("Самочувствие", [
+            "резкая общая слабость;",
+            "чувство жажды;",
+            "головокружение;",
+            "мелькание «мушек» перед глазами;",
+            "обморок (чаще при попытке встать).",
+        ]),
+        ("Кожа", [
+            "бледная;",
+            "влажная;",
+            "холодная на ощупь.",
+        ]),
+        ("Дыхание и сердце", [
+            "учащённое сердцебиение;",
+            "частое дыхание.",
+        ]),
     ]
     x = Emu(700000)
-    cw = Emu(3600000)
-    gap = Emu(300000)
-    for img, title, desc in cols:
-        tbox(slide, x, Emu(1450000), cw, Emu(450000), title, size=16, bold=True,
-             color=TEXT, align=PP_ALIGN.CENTER)
-        pic_fit(slide, img, x + Emu(150000), Emu(2000000), cw - Emu(300000), Emu(3000000))
-        tbox(slide, x, Emu(5200000), cw, Emu(1400000), desc, size=12, color=TEXT,
-             align=PP_ALIGN.CENTER)
-        x += cw + gap
+    widths = [Emu(4000000), Emu(3200000), Emu(3400000)]
+    for (title, items), w in zip(groups, widths):
+        rect(slide, x, Emu(1500000), w, Emu(4800000), WHITE, line=LINE)
+        rect(slide, x, Emu(1500000), w, Emu(700000), NUM_BG)
+        tbox(slide, x + Emu(100000), Emu(1600000), w - Emu(200000), Emu(500000),
+             title, size=15, bold=True, color=WHITE, align=PP_ALIGN.CENTER)
+        bullets(slide, x + Emu(150000), Emu(2450000), w - Emu(300000), Emu(3500000),
+                items, size=14, marker="☐")
+        x += w + Emu(250000)
     return slide
 
 
-def slide_mixed(prs, num=8):
+def slide_when_signs(prs, num=5):
     slide = blank(prs)
-    content_header(slide, "СМЕШАННОЕ КРОВОТЕЧЕНИЕ", num)
-    bullets(slide, Emu(700000), Emu(1600000), Emu(11000000), Emu(2800000), [
-        "Одновременно артериальное, венозное и капиллярное кровотечение.",
-        "Наблюдается, например, при отрыве конечности.",
-        "Опасно вследствие наличия артериального компонента.",
-    ], size=17)
-    round_rect(slide, Emu(700000), Emu(4600000), Emu(11000000), Emu(1600000), CREAM)
-    rect(slide, Emu(700000), Emu(4600000), Emu(100000), Emu(1600000), ACCENT_RED)
-    tbox(slide, Emu(1000000), Emu(4850000), Emu(10400000), Emu(1100000),
-         "При наличии кровотечения останавливайте его любым доступным способом "
-         "или их комбинацией — не тратьте время на точное определение вида.",
+    content_header(slide, "КОГДА ПОЯВЛЯЮТСЯ ПРИЗНАКИ КРОВОПОТЕРИ", num)
+    cards = [
+        ("Кровотечение продолжается",
+         "Признаки нарастают на фоне видимой крови."),
+        ("Кровотечение уже остановлено",
+         "Признаки могут сохраняться — потерянная кровь не возвращается сразу."),
+        ("Видимой крови нет",
+         "Возможно внутреннее (скрытое) кровотечение — оценивайте состояние."),
+    ]
+    y = Emu(1550000)
+    for title, text in cards:
+        rect(slide, Emu(700000), y, Emu(11000000), Emu(1300000), WHITE, line=LINE)
+        rect(slide, Emu(700000), y, Emu(90000), Emu(1300000), ACCENT_RED)
+        tbox(slide, Emu(1000000), y + Emu(150000), Emu(10400000), Emu(400000),
+             title, size=16, bold=True, color=TEXT)
+        tbox(slide, Emu(1000000), y + Emu(600000), Emu(10400000), Emu(500000),
+             text, size=14, color=MUTED)
+        y += Emu(1500000)
+    return slide
+
+
+def slide_hidden(prs, num=6):
+    slide = blank(prs)
+    content_header(slide, "СКРЫТАЯ (ВНУТРЕННЯЯ) КРОВОПОТЕРЯ", num)
+    tbox(slide, Emu(700000), Emu(1500000), Emu(11000000), Emu(900000),
+         "Снаружи крови может не быть видно, но состояние ухудшается. "
+         "Ориентируйтесь на признаки кровопотери и механизм травмы.",
+         size=16, color=TEXT)
+    bullets(slide, Emu(700000), Emu(2600000), Emu(11000000), Emu(2800000), [
+        "Настораживающие ситуации: удар в живот / грудь, падение с высоты, ДТП.",
+        "Боль и напряжение живота, нарастающая слабость, холодный пот, жажда.",
+        "На месте происшествия внутреннее кровотечение не останавливают — "
+        "нужны вызов СМП, покой, положение, контроль состояния.",
+    ], size=15)
+    round_rect(slide, Emu(700000), Emu(5600000), Emu(11000000), Emu(900000), CREAM)
+    tbox(slide, Emu(950000), Emu(5750000), Emu(10500000), Emu(600000),
+         "Нет видимой крови ≠ нет угрозы. Смотрите на состояние пострадавшего.",
+         size=15, bold=True, color=ACCENT_RED, anchor=MSO_ANCHOR.MIDDLE)
+    return slide
+
+
+def slide_intensity_scale(prs, num=7):
+    """Практическая оценка интенсивности — дополнение к обзорному осмотру."""
+    slide = blank(prs)
+    content_header(slide, "КАК ОЦЕНИТЬ ИНТЕНСИВНОСТЬ КРОВОТЕЧЕНИЯ", num)
+    levels = [
+        (ACCENT_BLUE, "Слабая",
+         "Капиллярное сочение, небольшие ссадины/порезы. "
+         "Угрозы жизни обычно нет, но остановить нужно."),
+        (NUM_BG, "Средняя",
+         "Стойкий «ручей», пропитывание повязки/ткани. "
+         "Без остановки возможна значительная кровопотеря."),
+        (ACCENT_RED, "Интенсивная",
+         "Струя / быстрое пропитывание одежды, лужа крови, "
+         "рана с сильным истечением — останавливать немедленно."),
+    ]
+    y = Emu(1500000)
+    for color, title, text in levels:
+        oval(slide, Emu(700000), y + Emu(150000), Emu(550000), Emu(550000), color)
+        tbox(slide, Emu(700000), y + Emu(150000), Emu(550000), Emu(550000),
+             title[0], size=16, bold=True, color=WHITE, align=PP_ALIGN.CENTER,
+             anchor=MSO_ANCHOR.MIDDLE)
+        tbox(slide, Emu(1450000), y, Emu(10000000), Emu(400000),
+             title, size=16, bold=True, color=TEXT)
+        tbox(slide, Emu(1450000), y + Emu(450000), Emu(10000000), Emu(700000),
+             text, size=14, color=MUTED)
+        y += Emu(1450000)
+    return slide
+
+
+def slide_compare_table(prs, num=8):
+    slide = blank(prs)
+    content_header(slide, "СРАВНЕНИЕ ПРИЗНАКОВ ПО ВИДАМ", num)
+    tbox(slide, Emu(700000), Emu(1400000), Emu(11000000), Emu(400000),
+         "Детализация к уже известным видам (артериальное / венозное / капиллярное).",
+         size=13, color=MUTED)
+    headers = ["Признак", "Артериальное", "Венозное", "Капиллярное"]
+    rows = [
+        ["Цвет", "Алый, яркий", "Тёмный, вишнёвый", "Красный"],
+        ["Характер", "Пульсирующая струя", "Равномерный «ручей»", "Сочится"],
+        ["Скорость потери", "Очень быстрая", "Умеренная / быстрая", "Медленная"],
+        ["Опасность", "Критическая — минуты", "Высокая", "Обычно низкая"],
+        ["Типичная картина", "Лужа алого цвета, одежда быстро мокнет",
+         "Стойкое истечение без пульсации", "Ссадина, порез, царапина"],
+    ]
+    table = slide.shapes.add_table(
+        len(rows) + 1, len(headers),
+        Emu(700000), Emu(1900000), Emu(11000000), Emu(4300000)
+    ).table
+    for c, h in enumerate(headers):
+        cell = table.cell(0, c)
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = TABLE_HDR
+        cell.text = h
+        for p in cell.text_frame.paragraphs:
+            for r in p.runs:
+                font(r, 12, True, WHITE)
+    for ri, row in enumerate(rows, 1):
+        for c, val in enumerate(row):
+            cell = table.cell(ri, c)
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = ROW_ALT if ri % 2 == 0 else WHITE
+            cell.text = val
+            alert = any(k in val for k in ("Алый", "Пульсир", "Критическ", "Очень"))
+            for p in cell.text_frame.paragraphs:
+                for r in p.runs:
+                    font(r, 11, alert, ACCENT_RED if alert else TEXT)
+    return slide
+
+
+def slide_mixed(prs, num=9):
+    slide = blank(prs)
+    content_header(slide, "СМЕШАННОЕ КРОВОТЕЧЕНИЕ — КОГДА ПОДОЗРЕВАТЬ", num)
+    bullets(slide, Emu(700000), Emu(1550000), Emu(11000000), Emu(2800000), [
+        "Одновременно признаки артериального, венозного и капиллярного кровотечения.",
+        "Частый пример — отрыв (ампутация) конечности или обширное размозжение.",
+        "Опасно из‑за артериального компонента: быстрая массивная кровопотеря.",
+        "Не тратьте время на «точную классификацию» — останавливайте по интенсивности.",
+    ], size=15)
+    round_rect(slide, Emu(700000), Emu(4700000), Emu(11000000), Emu(1500000), CREAM)
+    rect(slide, Emu(700000), Emu(4700000), Emu(100000), Emu(1500000), ACCENT_RED)
+    tbox(slide, Emu(1000000), Emu(4950000), Emu(10400000), Emu(1000000),
+         "Правило: есть интенсивное истечение крови — действуйте как при угрозе жизни.",
          size=16, bold=True, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
     return slide
 
 
-def slide_compare_table(prs, num=9):
+def slide_masking(prs, num=10):
     slide = blank(prs)
-    content_header(slide, "СРАВНЕНИЕ ВИДОВ КРОВОТЕЧЕНИЯ", num)
-    headers = ["Признак", "Артериальное", "Венозное", "Капиллярное"]
+    content_header(slide, "ЧТО МАСКИРУЕТ ПРИЗНАКИ КРОВОТЕЧЕНИЯ", num)
+    items = [
+        ("Тёмная / плотная одежда",
+         "Кровь плохо видна — ощупайте, приподнимите одежду при осмотре."),
+        ("Кровь под пострадавшим",
+         "Лужа может быть сзади / под телом — осмотрите вокруг."),
+        ("Холод, дождь, грязь",
+         "Сложно оценить цвет кожи и объём крови — опирайтесь на слабость, пульс, дыхание."),
+        ("Несколько пострадавших",
+         "Интенсивное кровотечение ищите в первую очередь у каждого."),
+    ]
+    y = Emu(1450000)
+    for title, text in items:
+        rect(slide, Emu(700000), y, Emu(11000000), Emu(1100000), WHITE, line=LINE)
+        tbox(slide, Emu(950000), y + Emu(120000), Emu(10400000), Emu(350000),
+             title, size=15, bold=True, color=TEXT)
+        tbox(slide, Emu(950000), y + Emu(500000), Emu(10400000), Emu(450000),
+             text, size=13, color=MUTED)
+        y += Emu(1200000)
+    return slide
+
+
+def slide_volume(prs, num=11):
+    """Ориентиры по объёму — дополнение, которого нет в презентации про осмотр."""
+    slide = blank(prs)
+    content_header(slide, "ОРИЕНТИРЫ ПО ОБЪЁМУ КРОВОПОТЕРИ", num)
+    headers = ["Объём (ориентир)", "Доля ОЦК", "Типичное состояние"]
     rows = [
-        ["Цвет крови", "Алый, яркий", "Тёмный, вишнёвый", "Красный"],
-        ["Характер", "Пульсирующей струёй", "Равномерным «ручьём»", "Сочится"],
-        ["Скорость", "Очень быстрая", "Умеренная / быстрая", "Медленная"],
-        ["Опасность", "Критическая — минуты", "Высокая", "Обычно низкая"],
+        ["До ~500 мл", "≈ 10%", "Слабость, жажда"],
+        ["500–1000 мл", "≈ 10–20%", "Бледность, учащённый пульс"],
+        ["1000–1500 мл", "≈ 20–30%", "Обмороки, холодный пот"],
+        [">1500–2000 мл", "> 30%", "Шок, угроза жизни"],
     ]
     table = slide.shapes.add_table(
         len(rows) + 1, len(headers),
-        Emu(700000), Emu(1550000), Emu(11000000), Emu(4500000)
+        Emu(700000), Emu(1550000), Emu(11000000), Emu(3800000)
     ).table
     for c, h in enumerate(headers):
         cell = table.cell(0, c)
@@ -411,48 +454,32 @@ def slide_compare_table(prs, num=9):
             cell.fill.solid()
             cell.fill.fore_color.rgb = ROW_ALT if ri % 2 == 0 else WHITE
             cell.text = val
-            alert = any(k in val for k in ("Алый", "Пульсир", "Критическ", "Очень"))
+            alert = ">" in val or "Шок" in val
             for p in cell.text_frame.paragraphs:
                 for r in p.runs:
                     font(r, 13, alert, ACCENT_RED if alert else TEXT)
+    tbox(slide, Emu(700000), Emu(5600000), Emu(11000000), Emu(800000),
+         "На месте точный объём измерить нельзя — таблица помогает понять тяжесть "
+         "по признакам состояния пострадавшего.",
+         size=14, color=MUTED)
     return slide
 
 
-def slide_intensity_signs(prs, num=10):
-    slide = blank(prs)
-    content_header(slide, "ПРИЗНАКИ ИНТЕНСИВНОГО КРОВОТЕЧЕНИЯ", num)
-    tbox(slide, Emu(700000), Emu(1500000), Emu(11000000), Emu(800000),
-         "Сигнал к немедленной остановке кровотечения:", size=16, bold=True)
-    bullets(slide, Emu(700000), Emu(2400000), Emu(11000000), Emu(2500000), [
-        "одежда, пропитанная кровью;",
-        "скопление значительного количества крови на земле возле пострадавшего;",
-        "видимые раны с интенсивно вытекающей из них кровью.",
-    ], size=17, marker="☐")
-    round_rect(slide, Emu(700000), Emu(5200000), Emu(11000000), Emu(1100000), CREAM)
-    tbox(slide, Emu(950000), Emu(5350000), Emu(10500000), Emu(800000),
-         "Обнаружив такие признаки — сразу приступайте к остановке "
-         "всеми доступными способами.",
-         size=16, bold=True, color=ACCENT_RED, anchor=MSO_ANCHOR.MIDDLE)
-    return slide
-
-
-def slide_summary(prs, num=11):
+def slide_summary(prs, num=12):
     slide = blank(prs)
     content_header(slide, "ГЛАВНОЕ ЗАПОМНИТЬ", num)
     points = [
-        "Кровотечение → кровопотеря → риск нарушения работы органов.",
-        "Признаки кровопотери: слабость, жажда, бледность, холодный пот, "
-        "учащённый пульс и дыхание, обморок.",
-        "Артериальное — алая пульсирующая струя; венозное — тёмный «ручей»; "
-        "капиллярное — сочение.",
-        "Ориентир для первой помощи — интенсивность, а не точный вид сосуда.",
+        "Признаки кровопотери смотрите по самочувствию, коже, дыханию и пульсу.",
+        "Признаки возможны и без видимой крови — думайте о скрытой кровопотере.",
+        "Интенсивность важнее «точного вида сосуда» для решения об остановке.",
+        "Тёмная одежда, положение тела и погода могут маскировать кровь — осматривайте внимательно.",
     ]
-    y = Emu(1550000)
+    y = Emu(1500000)
     for pt in points:
         rect(slide, Emu(700000), y, Emu(11000000), Emu(1000000), WHITE, line=LINE)
         rect(slide, Emu(700000), y, Emu(90000), Emu(1000000), ACCENT_RED)
         tbox(slide, Emu(1000000), y + Emu(150000), Emu(10400000), Emu(700000),
-             pt, size=15, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
+             pt, size=14, color=TEXT, anchor=MSO_ANCHOR.MIDDLE)
         y += Emu(1150000)
     return slide
 
@@ -478,21 +505,22 @@ def build():
     prs = new_prs()
     slide_title(prs)
     slide_toc(prs, [
-        "Понятие кровотечения и кровопотери",
-        "Признаки кровопотери",
-        "Острая массивная кровопотеря",
-        "Виды наружного кровотечения и их признаки",
-        "Интенсивность как главный ориентир",
+        "Чем тема дополняет обзорный осмотр",
+        "Признаки кровопотери по группам",
+        "Когда признаки есть без видимой крови",
+        "Оценка интенсивности и сравнение видов",
+        "Смешанное кровотечение, маскировка, объём",
     ], 2)
-    slide_definition(prs, 3)
-    slide_signs_blood_loss(prs, 4)
-    slide_danger(prs, 5)
-    slide_external_def(prs, 6)
-    slide_types_visual(prs, 7)
-    slide_mixed(prs, 8)
-    slide_compare_table(prs, 9)
-    slide_intensity_signs(prs, 10)
-    slide_summary(prs, 11)
+    slide_bridge(prs, 3)
+    slide_signs_groups(prs, 4)
+    slide_when_signs(prs, 5)
+    slide_hidden(prs, 6)
+    slide_intensity_scale(prs, 7)
+    slide_compare_table(prs, 8)
+    slide_mixed(prs, 9)
+    slide_masking(prs, 10)
+    slide_volume(prs, 11)
+    slide_summary(prs, 12)
     slide_thanks(prs)
 
     name = "Признаки_наружного_кровотечения_и_кровопотери.pptx"
@@ -501,9 +529,8 @@ def build():
     verify(path)
     path2 = ROOT / name
     prs.save(path2)
-    print(f"Saved: {path}")
     print(f"Saved: {path2}")
-    return path
+    return path2
 
 
 if __name__ == "__main__":
