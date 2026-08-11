@@ -19,7 +19,7 @@ DECKS = [
             "Опрос пострадавшего",
             "Опасные находки",
         ],
-        "memo_file": "tema4_detailed_exam.png",
+        "memo_file": "pamyatka-tema4-podrobnyy-osmotr-16x9.png",
         "memo_points": [
             "Осматривайте с головы до рук",
             "Шею проверяйте особенно осторожно",
@@ -106,7 +106,7 @@ DECKS = [
             "Судороги",
             "Реакции на стресс",
         ],
-        "memo_file": "tema4_main_states.png",
+        "memo_file": "pamyatka-tema4-osnovnye-sostoyaniya-16x9.png",
         "memo_points": [
             "Сначала устраните опасность",
             "Оцените сознание и дыхание",
@@ -227,7 +227,7 @@ DECKS = [
             "Живот и таз",
             "Конечности",
         ],
-        "memo_file": "tema4_trauma_regions.png",
+        "memo_file": "pamyatka-tema4-travmy-oblastey-16x9.png",
         "memo_points": [
             "Сначала остановите кровотечение",
             "Голову и шею удерживайте руками",
@@ -338,7 +338,7 @@ DECKS = [
             "Отморожение",
             "Переохлаждение",
         ],
-        "memo_file": "tema4_thermal.png",
+        "memo_file": "pamyatka-tema4-termicheskie-16x9.png",
         "memo_points": [
             "Прекратите действие температуры",
             "Ожог охлаждайте не менее 20 минут",
@@ -447,7 +447,7 @@ DECKS = [
             "Солнечный ожог",
             "Солнечный удар",
         ],
-        "memo_file": "tema4_chem_elec_rad.png",
+        "memo_file": "pamyatka-tema4-khim-elektro-izluchenie-16x9.png",
         "memo_points": [
             "Сначала защитите себя",
             "Химикат смывайте не менее 20 минут",
@@ -550,7 +550,7 @@ DECKS = [
             "Общий порядок",
             "Особенности помощи",
         ],
-        "memo_file": "tema4_poisoning.png",
+        "memo_file": "pamyatka-tema4-otravleniya-16x9.png",
         "memo_points": [
             "Прекратите действие яда",
             "Защитите себя",
@@ -663,7 +663,7 @@ DECKS = [
             "Холод и покой",
             "Наблюдение",
         ],
-        "memo_file": "tema4_bites.png",
+        "memo_file": "pamyatka-tema4-ukusy-16x9.png",
         "memo_points": [
             "Не приближайтесь к источнику опасности",
             "Вызовите скорую помощь",
@@ -729,7 +729,7 @@ DECKS = [
             "Помощь после приступа",
             "Поддержка",
         ],
-        "memo_file": "tema4_seizure.png",
+        "memo_file": "pamyatka-tema4-sudorogi-16x9.png",
         "memo_points": [
             "Уберите опасные предметы",
             "Не удерживайте человека силой",
@@ -793,7 +793,7 @@ DECKS = [
             "Что нельзя делать",
             "Контроль состояния",
         ],
-        "memo_file": "tema4_medicines.png",
+        "memo_file": "pamyatka-tema4-lekarstva-16x9.png",
         "memo_points": [
             "Только лекарство пострадавшего",
             "Только назначенное врачом",
@@ -875,7 +875,7 @@ DECKS = [
             "Реакции на стресс",
             "До прибытия помощи",
         ],
-        "memo_file": "tema4_position_psych.png",
+        "memo_file": "pamyatka-tema4-polozhenie-psihologiya-16x9.png",
         "memo_points": [
             "Положение должно помогать дыханию",
             "Без сознания, но дышит — на бок",
@@ -977,7 +977,7 @@ DECKS = [
             "Безопасность в пути",
             "Контроль состояния",
         ],
-        "memo_file": "tema4_transport.png",
+        "memo_file": "pamyatka-tema4-transportirovka-16x9.png",
         "memo_points": [
             "Предпочтительно дождаться скорой",
             "Тяжелые травмы без нужды не перемещают",
@@ -1063,7 +1063,7 @@ DECKS = [
             "Ответы на вопросы",
             "Помощь бригаде",
         ],
-        "memo_file": "tema4_handover.png",
+        "memo_file": "pamyatka-tema4-peredacha-smp-16x9.png",
         "memo_points": [
             "Передавайте после устного распоряжения",
             "Расскажите, что произошло",

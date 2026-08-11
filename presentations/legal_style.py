@@ -38,6 +38,13 @@ SUBTITLE = "Оказание первой помощи при наружных �
 COURSE = "Тема 2 · Оказание первой помощи при наружных кровотечениях"
 
 
+def set_context(subtitle: str, course: str) -> None:
+    """Переключает подзаголовок и строку курса для серии слайдов."""
+    global SUBTITLE, COURSE
+    SUBTITLE = subtitle
+    COURSE = course
+
+
 def asset(name: str) -> Path:
     return ASSETS / name
 
@@ -180,7 +187,7 @@ def content_header(slide, title: str, num: int | None = None):
     rect(slide, 0, 0, SLIDE_W, SLIDE_H, WHITE)
     m = Emu(700000)
     tbox(slide, m, Emu(250000), Emu(11200000), Emu(550000),
-         title, size=22, bold=True, color=TEXT)
+         title.upper(), size=22, bold=True, color=TEXT)
     rect(slide, m, Emu(850000), Emu(9000000), Emu(28000), NUM_BG)
     tbox(slide, m, Emu(920000), Emu(11000000), Emu(350000),
          SUBTITLE, size=12, color=MUTED)
