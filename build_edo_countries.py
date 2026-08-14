@@ -364,16 +364,17 @@ RECS = {
 }
 
 
-def set_run_font(run, name="Calibri", size=12, bold=False, color=None):
+def set_run_font(run, name="Calibri", size=12, bold=False, color=None, italic=False):
     run.font.name = name
     run._element.rPr.rFonts.set(qn("w:eastAsia"), "Calibri")
     run.font.size = Pt(size)
     run.bold = bold
+    run.italic = italic
     if color is not None:
         run.font.color.rgb = color
 
 
-def add_hyperlink(paragraph, text, url):
+def add_hyperlink(paragraph, text, url, size_pt: int = 11):
     part = paragraph.part
     r_id = part.relate_to(
         url,
@@ -391,7 +392,7 @@ def add_hyperlink(paragraph, text, url):
     u.set(qn("w:val"), "single")
     rPr.append(u)
     sz = OxmlElement("w:sz")
-    sz.set(qn("w:val"), "22")
+    sz.set(qn("w:val"), str(int(size_pt * 2)))
     rPr.append(sz)
     rFonts = OxmlElement("w:rFonts")
     rFonts.set(qn("w:ascii"), "Calibri")
@@ -404,6 +405,69 @@ def add_hyperlink(paragraph, text, url):
     new_run.append(t)
     hyperlink.append(new_run)
     paragraph._p.append(hyperlink)
+
+
+def add_verify_banner(doc: Document):
+    p = doc.add_paragraph()
+    run = p.add_run(
+        "Как проверить. После каждого блока фактов — строка «Проверить» с кликабельной "
+        "ссылкой на официальный текст закона, судебное решение или первоисточник. "
+        "Рекомендации («что добавить / не переносить») — выводы автора НИР, но рядом указаны "
+        "нормы, на которые они опираются. Номера дел не вымышлены."
+    )
+    set_run_font(run, size=10, italic=True, color=GRAY)
+    p.paragraph_format.space_after = Pt(12)
+
+
+def add_check_line(doc: Document, sources, lead: str = "Проверить: "):
+    items = []
+    seen = set()
+    for src in sources or []:
+        if not src:
+            continue
+        if isinstance(src, (list, tuple)) and len(src) >= 2:
+            name, url = src[0], src[1]
+        else:
+            continue
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        items.append((name, url))
+    if not items:
+        return
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(10)
+    run = p.add_run(lead)
+    set_run_font(run, size=9, italic=True, color=GRAY)
+    for i, (name, url) in enumerate(items):
+        if i:
+            sep = p.add_run("  ·  ")
+            set_run_font(sep, size=9, color=GRAY)
+        add_hyperlink(p, name, url, size_pt=9)
+
+
+def add_cited_para(doc: Document, text: str, sources=None):
+    add_para(doc, text)
+    add_check_line(doc, sources)
+
+
+def add_cited_bullets(doc: Document, items: list, fallback=None):
+    used_fallback = False
+    for item in items:
+        sources = None
+        text = item
+        if isinstance(item, (list, tuple)) and len(item) == 2 and isinstance(item[1], (list, tuple)):
+            text, sources = item[0], item[1]
+        p = doc.add_paragraph(style="List Bullet")
+        run = p.add_run(text)
+        set_run_font(run, size=12)
+        if sources:
+            add_check_line(doc, sources)
+        else:
+            used_fallback = True
+    if used_fallback:
+        add_check_line(doc, fallback)
 
 
 def setup_doc() -> Document:
@@ -448,7 +512,8 @@ def add_title_block(doc: Document, title: str, subtitle: str):
         "с правовой моделью Российской Федерации. Актуализация: август 2026 г."
     )
     set_run_font(run, size=11, color=GRAY)
-    note.paragraph_format.space_after = Pt(12)
+    note.paragraph_format.space_after = Pt(8)
+    add_verify_banner(doc)
 
 
 def add_heading(doc: Document, text: str):
@@ -479,8 +544,8 @@ def add_source_list(doc: Document, items: list[tuple[str, str]]):
 
 def add_rf_block(doc: Document):
     add_heading(doc, "3. База для сравнения: ЭДО в Российской Федерации")
-    add_bullets(doc, RF_BASE)
-    p = add_para(doc, "Источники по РФ (для сверки):")
+    add_cited_bullets(doc, RF_BASE, RF_SOURCES)
+    add_para(doc, "Источники по РФ (для сверки):")
     add_source_list(
         doc,
         [
@@ -494,14 +559,15 @@ def add_rf_block(doc: Document):
 
 def add_compare_table(doc: Document, country: dict):
     add_heading(doc, "4. Сравнительный анализ с ЭДО РФ")
-    table = doc.add_table(rows=5, cols=3)
+    table = doc.add_table(rows=5, cols=4)
     table.style = "Table Grid"
-    headers = ("Параметр", country["short"], "Российская Федерация")
+    headers = ("Параметр", country["short"], "Российская Федерация", "Проверить")
+    src0 = country["sources"][0] if country.get("sources") else RF_SOURCES[0]
     values = [
-        ("Юридическая сила", country["legal_force"], "Эл. документ с ЭП признаётся при соблюдении вида подписи и закона/соглашения (63‑ФЗ)"),
-        ("Модель подписи", country["signature"], "ПЭП / УНЭП / УКЭП"),
-        ("Инфраструктура доверия", country["trust"], "Аккредитованные УЦ, операторы ЭДО, УЦ ФНС"),
-        ("Трансграничность", country["crossborder"], "Ст. 7 63‑ФЗ, договоры сторон, ДТС ЕАЭС; 315‑ФЗ — УКЭП международных организаций"),
+        ("Юридическая сила", country["legal_force"], "Эл. документ с ЭП признаётся при соблюдении вида подписи и закона/соглашения (63‑ФЗ)", src0),
+        ("Модель подписи", country["signature"], "ПЭП / УНЭП / УКЭП", RF_SOURCES[0]),
+        ("Инфраструктура доверия", country["trust"], "Аккредитованные УЦ, операторы ЭДО, УЦ ФНС", src0),
+        ("Трансграничность", country["crossborder"], "Ст. 7 63‑ФЗ, договоры сторон, ДТС ЕАЭС; 315‑ФЗ — УКЭП международных организаций", RF_SOURCES[1]),
     ]
     for i, h in enumerate(headers):
         cell = table.rows[0].cells[i]
@@ -516,27 +582,33 @@ def add_compare_table(doc: Document, country: dict):
         for c, val in enumerate(row):
             cell = table.rows[r].cells[c]
             cell.text = ""
-            run = cell.paragraphs[0].add_run(val)
-            set_run_font(run, size=10, bold=(c == 0))
+            p = cell.paragraphs[0]
+            if isinstance(val, (list, tuple)) and len(val) == 2 and str(val[1]).startswith("http"):
+                add_hyperlink(p, val[0], val[1], size_pt=9)
+            else:
+                run = p.add_run(str(val))
+                set_run_font(run, size=10, bold=(c == 0))
     doc.add_paragraph()
-    add_bullets(doc, country["compare"])
+    add_cited_bullets(doc, country["compare"], country["sources"] + [RF_SOURCES[0], RF_SOURCES[2]])
 
 
 def build_country_doc(country: dict) -> Path:
     doc = setup_doc()
     add_title_block(doc, country["title"], "Сравнительный обзор с Российской Федерацией")
     add_heading(doc, "1. Краткий обзор регулирования ЭДО")
-    add_para(doc, f"Основные акты: {country['acts']}")
-    for para in country["overview"]:
-        add_para(doc, para)
+    add_cited_para(doc, f"Основные акты: {country['acts']}", country["sources"])
+    extra = country.get("overview_src") or []
+    for i, para in enumerate(country["overview"]):
+        src = extra[i] if i < len(extra) and extra[i] else country["sources"]
+        add_cited_para(doc, para, src)
     add_heading(doc, "2. Ключевые особенности")
-    add_bullets(doc, country["features"])
+    add_cited_bullets(doc, country["features"], country["sources"])
     add_rf_block(doc)
     add_compare_table(doc, country)
     add_heading(doc, "5. Что из этой практики можно добавить в РФ")
-    add_bullets(doc, country["add"])
+    add_cited_bullets(doc, country["add"], country["sources"] + [RF_SOURCES[2]])
     add_heading(doc, "6. Что не стоит заимствовать / лучше не ужесточать")
-    add_bullets(doc, country["dont"])
+    add_cited_bullets(doc, country["dont"], country["sources"])
     add_heading(doc, "7. Источники")
     add_source_list(doc, country["sources"])
     path = OUT / country["file"]
@@ -547,15 +619,15 @@ def build_country_doc(country: dict) -> Path:
 def build_recs_doc() -> Path:
     doc = setup_doc()
     add_title_block(doc, RECS["title"], RECS["subtitle"])
-    add_para(doc, RECS["intro"])
+    add_cited_para(doc, RECS["intro"], RF_SOURCES)
     add_heading(doc, "1. Общий вывод")
-    add_bullets(doc, RECS["general"])
+    add_cited_bullets(doc, RECS["general"], RF_SOURCES)
     add_heading(doc, "2. Что целесообразно добавить в российскую практику / регулирование")
-    add_bullets(doc, RECS["add"])
+    add_cited_bullets(doc, RECS["add"], RF_SOURCES)
     add_heading(doc, "3. Что не стоит заимствовать / что лучше не ужесточать")
-    add_bullets(doc, RECS["dont"])
+    add_cited_bullets(doc, RECS["dont"], RF_SOURCES)
     add_heading(doc, "4. Матрица приоритетов")
-    add_bullets(doc, RECS["matrix"])
+    add_cited_bullets(doc, RECS["matrix"], RF_SOURCES)
     add_heading(doc, "5. Состав комплекта страновых файлов")
     add_bullets(
         doc,
@@ -602,26 +674,43 @@ def build_markdown() -> Path:
         "",
         "**Вывод.** Это не регулирование «операторов ЭДО» как отрасли, а правовой режим электронных сообщений и записей: документ нельзя отвергнуть только потому, что он электронный.",
         "",
+        "**Как проверять этот обзор.** У каждой юрисдикции после абзацев — строка «Проверить» со ссылкой на официальный текст. Список в конце раздела дублирует те же URL.",
+        "",
         "---",
         "",
     ]
+    def md_check(sources):
+        return "*Проверить:* " + " · ".join(f"[{name}]({url})" for name, url in sources)
+
     for i, c in enumerate(COUNTRIES, start=2):
         lines.append(f"## {i}. {c['title']}")
         lines.append("")
         lines.append(f"**Акты:** {c['acts']}")
         lines.append("")
-        for para in c["overview"]:
+        lines.append(md_check(c["sources"]))
+        lines.append("")
+        extra = c.get("overview_src") or []
+        for j, para in enumerate(c["overview"]):
             lines.append(para)
+            lines.append("")
+            src = extra[j] if j < len(extra) and extra[j] else c["sources"]
+            lines.append(md_check(src))
             lines.append("")
         lines.append("**Особенности.**")
         for f in c["features"]:
             lines.append(f"- {f}")
         lines.append("")
+        lines.append(md_check(c["sources"]))
+        lines.append("")
         lines.append("**Сравнение с РФ.**")
         for f in c["compare"]:
             lines.append(f"- {f}")
         lines.append("")
+        lines.append(md_check(c["sources"] + [RF_SOURCES[0], RF_SOURCES[2]]))
+        lines.append("")
         lines.append("**Что взять.** " + " ".join(c["add"]))
+        lines.append("")
+        lines.append(md_check(c["sources"]))
         lines.append("")
         lines.append("**Что не брать.** " + " ".join(c["dont"]))
         lines.append("")
@@ -740,6 +829,7 @@ def build_xlsx() -> Path:
         "Услуги доверия / УЦ",
         "Трансграничное признание",
         "Особенности для ЭДО",
+        "Ссылка для проверки",
     ]
     for c, h in enumerate(headers, start=1):
         cell = ws2.cell(1, c, h)
@@ -755,11 +845,13 @@ def build_xlsx() -> Path:
         "Роль доверенных третьих сторон описана рамочно (особенно в MLES)",
         "MLES: признание иностранных подписей по существенной эквивалентности; MLETR: иностранные электронные передаваемые записи",
         "База для национальных законов; не «ЭДО‑платформы», а правовой режим электронных сообщений и записей",
+        "https://uncitral.un.org/en/texts/ecommerce/modellaw/electronic_commerce",
     ]
     rows = [uncitral]
     for c in COUNTRIES:
+        url = c["sources"][0][1] if c.get("sources") else ""
         rows.append(
-            [c["short"], c["acts"], c["legal_force"], c["signature"], c["trust"], c["crossborder"], c["feature"]]
+            [c["short"], c["acts"], c["legal_force"], c["signature"], c["trust"], c["crossborder"], c["feature"], url]
         )
     rows.append(
         [
@@ -770,6 +862,7 @@ def build_xlsx() -> Path:
             "Аккредитованные УЦ; ФНС и др. инфраструктура доверия; операторы ЭДО",
             "Ст. 7 63‑ФЗ, договоры сторон, ЕАЭС через ДТС; 315‑ФЗ — УКЭП международных организаций в РФ",
             "Отдельно развит B2B‑ЭДО (счета‑фактуры) и кадровый ЭДО; слабее — MLETR и квалифицированный архив",
+            RF_SOURCES[0][1],
         ]
     )
     for r, row in enumerate(rows, start=2):
@@ -778,6 +871,9 @@ def build_xlsx() -> Path:
             cell.alignment = wrap
             cell.border = thin
             cell.font = Font(name="Calibri", size=10)
+            if isinstance(val, str) and val.startswith("http"):
+                cell.hyperlink = val
+                cell.font = Font(color="0563C1", name="Calibri", size=10)
         ws2.row_dimensions[r].height = 78
     ws2.row_dimensions[1].height = 28
     ws2.freeze_panes = "B2"
@@ -833,10 +929,12 @@ def build_xlsx() -> Path:
         ws4.cell(i, 1, a).border = thin
         ws4.cell(i, 2, b).border = thin
         ws4.cell(i, 2).font = Font(color="0563C1", name="Calibri", size=10)
+        if str(b).startswith("http"):
+            ws4.cell(i, 2).hyperlink = b
 
     for wsx, widths in (
         (ws, [28, 110, 20, 20]),
-        (ws2, [28, 42, 36, 36, 36, 36, 36]),
+        (ws2, [28, 42, 36, 36, 36, 36, 36, 42]),
         (ws3, [70, 70, 70]),
         (ws4, [42, 90]),
     ):

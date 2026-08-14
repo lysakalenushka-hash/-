@@ -19,6 +19,9 @@ from build_edo_countries import (
     RF_BASE,
     RF_SOURCES,
     add_bullets,
+    add_check_line,
+    add_cited_bullets,
+    add_cited_para,
     add_heading,
     add_hyperlink,
     add_para,
@@ -65,8 +68,14 @@ def add_table(doc, headers, rows, header_fill="1F4E79"):
         for c, val in enumerate(row):
             cell = table.rows[r].cells[c]
             cell.text = ""
-            run = cell.paragraphs[0].add_run(str(val))
-            set_run_font(run, size=10, bold=(c == 0))
+            p = cell.paragraphs[0]
+            if isinstance(val, (list, tuple)) and len(val) == 2 and str(val[1]).startswith("http"):
+                add_hyperlink(p, str(val[0]), str(val[1]), size_pt=9)
+            elif isinstance(val, str) and val.startswith("http"):
+                add_hyperlink(p, val, val, size_pt=9)
+            else:
+                run = p.add_run(str(val))
+                set_run_font(run, size=10, bold=(c == 0))
     doc.add_paragraph()
     return table
 
@@ -126,7 +135,11 @@ COUNTRIES = [
                 "Не делать Textform единственным стандартом для документов с высоким риском оспаривания (несчастные случаи, наряды‑допуски).",
             ],
             "sources": [
-                ("eIDAS (EU) 910/2014", "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32014R0910"),
+                ("eIDAS (EU) 910/2014, EUR-Lex", "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32014R0910"),
+                ("VDG (gesetze-im-internet)", "https://www.gesetze-im-internet.de/vdg/"),
+                ("BGB § 126a — электронная форма", "https://www.gesetze-im-internet.de/bgb/__126a.html"),
+                ("BGB § 126b — текстовая форма", "https://www.gesetze-im-internet.de/bgb/__126b.html"),
+                ("BGB § 623 — расторжение трудового договора", "https://www.gesetze-im-internet.de/bgb/__623.html"),
                 ("BGH VIII ZR 155/23 (27.11.2024), PDF суда", "https://www.bundesgerichtshof.de/SharedDocs/Entscheidungen/DE/Zivilsenate/VIII_ZS/2023/VIII_ZR_155-23.pdf?__blob=publicationFile&v=1"),
                 ("BEG IV / трудовое право с 01.01.2025 (обзор)", "https://www.pkf-fasselt.de/artikel/buerokratieentlastung-und-arbeitsrecht"),
             ],
@@ -167,6 +180,9 @@ COUNTRIES = [
             "sources": [
                 ("BAG 1 ABR 104/09 (11.01.2011)", "https://www.bundesarbeitsgericht.de/entscheidung/1-abr-104-09/"),
                 ("ArbSchG (gesetze-im-internet)", "https://www.gesetze-im-internet.de/arbschg/"),
+                ("ArbSchG § 12 — Unterweisung", "https://www.gesetze-im-internet.de/arbschg/__12.html"),
+                ("ArbSchG § 5 — оценка рисков", "https://www.gesetze-im-internet.de/arbschg/__5.html"),
+                ("GefStoffV § 14", "https://www.gesetze-im-internet.de/gefstoffv_2010/__14.html"),
             ],
         },
         "case_edo": {
@@ -256,7 +272,9 @@ COUNTRIES = [
                 "Не сводить весь ЭДО только к государственной ЭЦП, если для массовых инструктажей достаточно идентификации + метки времени (это как раз путь п. 35 Инструкции № 175).",
             ],
             "sources": [
-                ("Закон РБ № 113‑З, ст. 22", "https://zakony-by.com/zakon_rb_ob_elektronnom_dokumente_i_elektronnoj_tsifrovoj_podpisi/22.htm"),
+                ("Закон РБ № 113‑З (pravo.by)", "https://pravo.by/document/?guid=3871&p0=H10900113"),
+                ("Закон РБ № 113‑З, ст. 22 (текст статьи)", "https://zakony-by.com/zakon_rb_ob_elektronnom_dokumente_i_elektronnoj_tsifrovoj_podpisi/22.htm"),
+                ("ХПК РБ (pravo.by)", "https://pravo.by/document/?guid=3871&p0=Hk9800219"),
                 ("Ст. 84 ХПК РБ", "https://zakony-by.com/hozyajstvennyj_protsessualnyj_kodeks_rb/84.htm"),
                 ("Электронные доказательства в КГС с 01.01.2026", "https://ibmedia.by/news/elektronnoe-dokazatelstvo-v-grazhdanskom-protsesse-glavnoe-o-novovvedenii-2026-goda/"),
             ],
@@ -383,6 +401,7 @@ COUNTRIES = [
                 "Не переносить процессуальный формализм QES на все журналы ОТ: Сербия сама для большинства форм ОТ разрешила электронику, но оставила бумагу для учёта обученных (Form 6).",
             ],
             "sources": [
+                ("Закон об электронном документе РС 94/2017 (Paragraf)", "https://www.paragraf.rs/propisi/zakon_o_elektronskom_dokumentu_elektronskoj_identifikaciji_i_uslugama_od_poverenja_u_elektronskom_poslovanju.html"),
                 ("Подача жалобы e‑mail / QES, Конституционный суд, XI.2023 (обзор PR Legal)", "https://www.prlegal.rs/filing-a-complaint-via-email-yes-it-is-possible/"),
                 ("Высший суд Ниша: приём электронных подач, QES", "https://ni.vi.sud.rs/tekst/1958/prijem-elektronskih-podnesaka.php"),
             ],
@@ -418,6 +437,7 @@ COUNTRIES = [
                 "Не объявлять сербский Form 6 доказательством того, что электронное обучение всегда юридически ничтожно — это политический выбор носителя, а не вывод суда.",
             ],
             "sources": [
+                ("Закон о БЗР РС 35/2023 (Paragraf)", "https://www.paragraf.rs/propisi/zakon-o-bezbednosti-i-zdravlju-na-radu.html"),
                 ("Lexology: новые правилники ОТ, Form 6, электроника + QES", "https://www.lexology.com/library/detail.aspx?g=123a20c5-c0a7-425d-8c37-c9892c70dc93"),
                 ("DIER: электронное ведение, Form 6 на бумаге", "https://dier.rs/pravilnik-o-vodenju-i-rokovima-cuvanja-evidencija-u-oblasti-bezbednosti-i-zdravlja-na-radu-sta-donose-nove-izmene"),
             ],
@@ -508,7 +528,9 @@ COUNTRIES = [
             ],
             "sources": [
                 ("Ley 6/2020 (BOE) — правка LEC 326", "https://www.boe.es/eli/es/l/2020/11/11/6"),
+                ("LEC, art. 326 (BOE, текст кодекса)", "https://www.boe.es/buscar/act.php?id=BOE-A-2000-323#a326"),
                 ("LEC art. 326 (Iberley)", "https://www.iberley.es/legislacion/articulo-326-ley-enjuiciamiento-civil"),
+                ("STS 116/2025, обзор LegalToday", "https://www.legaltoday.com/practica-juridica/derecho-penal/valor-probatorio-de-los-pantallazos-de-conversaciones-de-whatsapp-o-sus-transcripciones-sts-116-2025-de-13-de-febrero-2025-09-29/"),
             ],
         },
         "ot": {
@@ -541,6 +563,7 @@ COUNTRIES = [
             ],
             "sources": [
                 ("LPRL 31/1995 (BOE)", "https://www.boe.es/buscar/act.php?id=BOE-A-1995-24292"),
+                ("Estatuto de los Trabajadores (BOE)", "https://www.boe.es/buscar/act.php?id=BOE-A-2015-11430"),
                 ("LEX/AHK: ЭП в трудовых документах", "https://lex.ahk.es/actualidad-juridica/puede-la-empresa-emplear-la-firma-electronica-en-el-ambito-laboral"),
             ],
         },
@@ -629,6 +652,7 @@ COUNTRIES = [
             ],
             "sources": [
                 ("ECA 2000, section 9", "https://www.irishstatutebook.ie/eli/2000/act/27/section/9/enacted/en/html"),
+                ("ECA 2000, section 13", "https://www.irishstatutebook.ie/eli/2000/act/27/section/13/enacted/en/html"),
                 ("Ryanair v Billigfluege.de [2010] IEHC 47", "https://www.bailii.org/ie/cases/IEHC/2010/H47.html"),
             ],
         },
@@ -748,6 +772,8 @@ COUNTRIES = [
             ],
             "sources": [
                 ("Cass. 3e civ., 5 mars 2026, n° 24‑21.034 (Legalis)", "https://www.legalis.net/jurisprudences/cour-de-cassation-civile-ch-civile-3-arret-du-5-mars-2026/"),
+                ("Code civil, art. 1366 (Légifrance)", "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032042219"),
+                ("Code civil, art. 1367 (Légifrance)", "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000032042224"),
                 ("Décret 2017‑1416", "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000035638541/"),
             ],
         },
@@ -782,6 +808,7 @@ COUNTRIES = [
                 "Не путать «презумпцию QES» с «обязанностью подписывать каждый инструктаж УКЭП».",
             ],
             "sources": [
+                ("Code du travail L. 4121‑1 (Légifrance)", "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006903144"),
                 ("Cass. soc. 28.02.2024, n° 22‑15.624 (обзор)", "https://www.lemag-juridique.com/articles/responsabilite-preuve-manquement-lemployeur-regles-prevention-securite-lorigine-laccident-travail-salarie-6418.htm"),
                 ("Cass. soc. 14.12.2022, n° 21‑19.841 (KPMG)", "https://kpmg.com/av/fr/avocats/eclairages/2023/01/valeur-juridique-de-la-signature-numerisee.html"),
             ],
@@ -872,7 +899,9 @@ COUNTRIES = [
             ],
             "sources": [
                 ("[2025] KEELC 392 (Kenya Law)", "https://new.kenyalaw.org/akn/ke/judgment/keelc/2025/392/eng@2025-02-06"),
-                ("Evidence Act Cap 80, s. 106B", "https://kenyalaw.org/lex/actview.xql?actid=CAP.+80"),
+                ("KICA (Kenya Law)", "https://new.kenyalaw.org/akn/ke/act/1998/2"),
+                ("Evidence Act Cap 80 (Kenya Law)", "https://new.kenyalaw.org/akn/ke/act/1963/46"),
+                ("Evidence Act Cap 80, s. 106B (lex)", "https://kenyalaw.org/lex/actview.xql?actid=CAP.+80"),
             ],
         },
         "ot": {
@@ -969,30 +998,32 @@ def build_edo_doc(c: dict) -> Path:
         "Электронный документооборот в целом. Сравнение с Российской Федерацией",
     )
     add_heading(doc, "1. Краткий обзор регулирования ЭДО")
-    add_para(doc, f"Основные акты: {d['acts']}")
-    for p in d["overview"]:
-        add_para(doc, p)
+    add_cited_para(doc, f"Основные акты: {d['acts']}", d["sources"])
+    extra = d.get("overview_src") or []
+    for i, p in enumerate(d["overview"]):
+        src = extra[i] if i < len(extra) and extra[i] else d["sources"]
+        add_cited_para(doc, p, src)
     add_heading(doc, "2. Ключевые особенности")
-    add_bullets(doc, d["features"])
+    add_cited_bullets(doc, d["features"], d["sources"])
     add_heading(doc, "3. База для сравнения: ЭДО в Российской Федерации")
-    add_bullets(doc, RF_BASE)
+    add_cited_bullets(doc, RF_BASE, RF_SOURCES)
     add_source_list(doc, [RF_SOURCES[0], RF_SOURCES[2], RF_SOURCES[3]])
     add_heading(doc, "4. Сравнительный анализ с ЭДО РФ")
     add_table(
         doc,
-        ("Параметр", c["short"], "Российская Федерация"),
+        ("Параметр", c["short"], "Российская Федерация", "Проверить"),
         [
-            ("Юридическая сила", d["legal_force"], "Эл. документ с ЭП признаётся при соблюдении вида подписи и закона/соглашения (63‑ФЗ)"),
-            ("Модель подписи", d["signature"], "ПЭП / УНЭП / УКЭП"),
-            ("Инфраструктура доверия", d["trust"], "Аккредитованные УЦ, операторы ЭДО, УЦ ФНС"),
-            ("Трансграничность", d["crossborder"], "Ст. 7 63‑ФЗ, договоры, ДТС ЕАЭС; 315‑ФЗ — УКЭП международных организаций"),
+            ("Юридическая сила", d["legal_force"], "Эл. документ с ЭП признаётся при соблюдении вида подписи и закона/соглашения (63‑ФЗ)", d["sources"][0]),
+            ("Модель подписи", d["signature"], "ПЭП / УНЭП / УКЭП", RF_SOURCES[0]),
+            ("Инфраструктура доверия", d["trust"], "Аккредитованные УЦ, операторы ЭДО, УЦ ФНС", d["sources"][0]),
+            ("Трансграничность", d["crossborder"], "Ст. 7 63‑ФЗ, договоры, ДТС ЕАЭС; 315‑ФЗ — УКЭП международных организаций", RF_SOURCES[1]),
         ],
     )
-    add_bullets(doc, d["compare"])
+    add_cited_bullets(doc, d["compare"], d["sources"] + [RF_SOURCES[0], RF_SOURCES[2]])
     add_heading(doc, "5. Что из этой практики можно добавить в РФ")
-    add_bullets(doc, d["add"])
+    add_cited_bullets(doc, d["add"], d["sources"] + [RF_SOURCES[2]])
     add_heading(doc, "6. Что не стоит заимствовать / лучше не ужесточать")
-    add_bullets(doc, d["dont"])
+    add_cited_bullets(doc, d["dont"], d["sources"])
     add_heading(doc, "7. Источники")
     add_source_list(doc, d["sources"])
     return save(doc, PACK / "01_ЭДО_в_целом" / f"{c['n']}_{c['name']}_ЭДО.docx")
@@ -1007,29 +1038,31 @@ def build_ot_doc(c: dict) -> Path:
         "Электронные документы обучения, инструктажа, учёта НС. Сравнение с РФ",
     )
     add_heading(doc, "1. Регулирование ЭДО в охране труда")
-    add_para(doc, f"Основные акты: {d['acts']}")
-    for p in d["overview"]:
-        add_para(doc, p)
+    add_cited_para(doc, f"Основные акты: {d['acts']}", d["sources"])
+    extra = d.get("overview_src") or []
+    for i, p in enumerate(d["overview"]):
+        src = extra[i] if i < len(extra) and extra[i] else d["sources"]
+        add_cited_para(doc, p, src)
     add_heading(doc, "2. Ключевые особенности")
-    add_bullets(doc, d["features"])
+    add_cited_bullets(doc, d["features"], d["sources"])
     add_heading(doc, "3. База для сравнения: ЭДО в ОТ в Российской Федерации")
-    add_bullets(doc, RF_OT)
+    add_cited_bullets(doc, RF_OT, RF_OT_SRC)
     add_source_list(doc, RF_OT_SRC)
     add_heading(doc, "4. Сравнение с РФ")
     add_table(
         doc,
-        ("Параметр", c["short"], "Российская Федерация"),
+        ("Параметр", c["short"], "Российская Федерация", "Проверить"),
         [
-            ("Юридическая сила записей ОТ", d["legal_force"], "Журналы инструктажей и акты НС исключены из кадрового ЭДО (ст. 22.1 ч. 3 ТК РФ)"),
-            ("Подпись / форма журнала", d["signature"], "На практике — бумажный журнал; КЭДО на эти документы не распространяется"),
-            ("Доверие / система", d["trust"], "Бумажный журнал + ПП 2464; операторы КЭДО — для иных кадровых документов"),
+            ("Юридическая сила записей ОТ", d["legal_force"], "Журналы инструктажей и акты НС исключены из кадрового ЭДО (ст. 22.1 ч. 3 ТК РФ)", d["sources"][0]),
+            ("Подпись / форма журнала", d["signature"], "На практике — бумажный журнал; КЭДО на эти документы не распространяется", RF_OT_SRC[0]),
+            ("Доверие / система", d["trust"], "Бумажный журнал + ПП 2464; операторы КЭДО — для иных кадровых документов", RF_OT_SRC[1]),
         ],
     )
-    add_bullets(doc, d["compare"])
+    add_cited_bullets(doc, d["compare"], d["sources"] + RF_OT_SRC)
     add_heading(doc, "5. Что можно добавить в РФ")
-    add_bullets(doc, d["add"])
+    add_cited_bullets(doc, d["add"], d["sources"] + RF_OT_SRC)
     add_heading(doc, "6. Что не стоит переносить механически")
-    add_bullets(doc, d["dont"])
+    add_cited_bullets(doc, d["dont"], d["sources"])
     add_heading(doc, "7. Источники")
     add_source_list(doc, d["sources"])
     return save(doc, PACK / "02_ЭДО_в_ОТ" / f"{c['n']}_{c['name']}_ЭДО_в_ОТ.docx")
@@ -1052,11 +1085,14 @@ def build_case_doc(c: dict, kind: str) -> Path:
             "Это аналогия: отдельного опубликованного решения именно об «электронном журнале инструктажа / электронном документе ОТ» не найдено. "
             "Ниже — ближайшая реальная практика (или связка нормы ОТ и процессуальных правил ЭДО). Номера дел не вымышлены.",
         )
+        add_check_line(doc, case["sources"], lead="Проверить норму / ближайшее дело: ")
     else:
-        add_para(
+        add_cited_para(
             doc,
             "Ниже — опубликованная практика по электронным документам / подписи. Цитата и ссылки проверяемые.",
+            case["sources"],
         )
+    add_check_line(doc, case["sources"], lead="Карточка дела: ")
     add_heading(doc, "1. Реквизиты")
     add_table(
         doc,
@@ -1067,14 +1103,17 @@ def build_case_doc(c: dict, kind: str) -> Path:
             ("Цитата", case["cite"]),
             ("Сюжет", case["title"]),
             ("Статус", "Аналогия (ближайшая практика)" if case["analog"] else "Прямая практика по ЭДО / электронным доказательствам"),
+            ("Ссылка для проверки", case["sources"][0] if case.get("sources") else ""),
         ],
     )
+    if len(case.get("sources") or []) > 1:
+        add_check_line(doc, case["sources"][1:], lead="Дополнительные ссылки: ")
     add_heading(doc, "2. Фабула")
-    add_para(doc, case["facts"])
+    add_cited_para(doc, case["facts"], case["sources"])
     add_heading(doc, "3. Правовая позиция")
-    add_para(doc, case["holding"])
+    add_cited_para(doc, case["holding"], case["sources"])
     add_heading(doc, "4. Значение для НИР (ЭДО / ОТ / РФ)")
-    add_bullets(doc, case["meaning"])
+    add_cited_bullets(doc, case["meaning"], case["sources"] + RF_OT_SRC[:1])
     add_heading(doc, "5. Источники")
     add_source_list(doc, case["sources"])
     return save(doc, folder / f"{c['n']}_{c['name']}_{suffix}.docx")
@@ -1088,13 +1127,14 @@ def build_compare_seven() -> Path:
         "Германия, Беларусь, Сербия, Испания, Ирландия, Франция, Кения",
     )
     add_heading(doc, "1. Зачем сравнивать именно эту семёрку")
-    add_para(
+    add_cited_para(
         doc,
         "Семёрка закрывает четыре модели, которых не хватало в предыдущем комплекте (ЕС как блок, UK, США, Сингапур, Китай, Казахстан): "
         "национальные слои eIDAS (DE/ES/IE/FR), eIDAS‑подобный кандидат (RS), PKI‑ЭЦП ЕАЭС (BY), UNCITRAL + жёсткий доказательственный фильтр (KE).",
+        [COUNTRIES[0]["edo"]["sources"][0], COUNTRIES[1]["edo"]["sources"][0], COUNTRIES[6]["edo"]["sources"][0]],
     )
     add_heading(doc, "2. Чем похожи")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
             "Все семь признают электронный документ / электронную подпись: нигде электронная форма сама по себе не делает акт ничтожным.",
@@ -1103,61 +1143,66 @@ def build_compare_seven() -> Path:
             "Во всех юрисдикциях после травмы/НС работодатель фактически должен уметь доказать обучение/инструктаж/меры, независимо от носителя.",
             "Скан картинки подписи нигде не считается полноценной квалифицированной / advanced электронной подписью (прямо — Франция 21‑19.841; по смыслу — eIDAS, 113‑З, KICA).",
         ],
+        [x["edo"]["sources"][0] for x in COUNTRIES] + [COUNTRIES[5]["ot"]["sources"][-1]],
     )
     add_heading(doc, "3. Чем различаются")
     add_table(
         doc,
-        ("Страна", "Модель ЭДО", "ЭДО в ОТ / журнал обучения", "Судебный акцент"),
+        ("Страна", "Модель ЭДО", "ЭДО в ОТ / журнал обучения", "Судебный акцент", "Проверить"),
         [
-            ("Германия", "eIDAS + BGB‑формы; с 2025 Textform в кадрах", "Подпись на Unterweisung не обязательна; важен содержание и оценка рисков", "Zugang QES (BGH 2024); содержание инструктажа (BAG 2011)"),
-            ("Беларусь", "Закон 113‑З, государственная ЭЦП", "Прямо разрешён электронный журнал (п. 35 Инстр. 175)", "Ст. 84 ХПК: эл. документ = письменное доказательство"),
-            ("Сербия", "eIDAS‑подобный закон; трудовой формализм", "Электроника форм ОТ с QES, но Form 6 (обучение) — бумага", "Без QES процессуальный документ «не подан»"),
-            ("Испания", "eIDAS + LEC 326.4 (презумпция QTSP)", "Запрета e‑учёта обучения нет; art. 19 LPRL — содержание", "Два режима: презумпция QTSP и мягкие pantallazos"),
-            ("Ирландия", "ECA 2000 s. 9 + eIDAS; common law consent", "Запрета нет; суд проверяет реальность обучения", "Click‑wrap (Ryanair); training as safety duty (Redmond)"),
-            ("Франция", "CC 1366–1367; презумпция только у QES", "Запрета нет; бремя мер L.4121 на работодателе", "Cass. 2026 — нет презумпции без QES; Cass. 2024 — бремя ОТ"),
-            ("Кения", "KICA 83P + Evidence Act 106B", "OSHA молчит об e‑журнале; в суде — 106B", "Без сертификата 106B электронная запись снимается"),
+            ("Германия", "eIDAS + BGB‑формы; с 2025 Textform в кадрах", "Подпись на Unterweisung не обязательна; важен содержание и оценка рисков", "Zugang QES (BGH 2024); содержание инструктажа (BAG 2011)", COUNTRIES[0]["edo"]["sources"][0]),
+            ("Беларусь", "Закон 113‑З, государственная ЭЦП", "Прямо разрешён электронный журнал (п. 35 Инстр. 175)", "Ст. 84 ХПК: эл. документ = письменное доказательство", COUNTRIES[1]["edo"]["sources"][0]),
+            ("Сербия", "eIDAS‑подобный закон; трудовой формализм", "Электроника форм ОТ с QES, но Form 6 (обучение) — бумага", "Без QES процессуальный документ «не подан»", COUNTRIES[2]["edo"]["sources"][0]),
+            ("Испания", "eIDAS + LEC 326.4 (презумпция QTSP)", "Запрета e‑учёта обучения нет; art. 19 LPRL — содержание", "Два режима: презумпция QTSP и мягкие pantallazos", COUNTRIES[3]["edo"]["sources"][0]),
+            ("Ирландия", "ECA 2000 s. 9 + eIDAS; common law consent", "Запрета нет; суд проверяет реальность обучения", "Click‑wrap (Ryanair); training as safety duty (Redmond)", COUNTRIES[4]["edo"]["sources"][0]),
+            ("Франция", "CC 1366–1367; презумпция только у QES", "Запрета нет; бремя мер L.4121 на работодателе", "Cass. 2026 — нет презумпции без QES; Cass. 2024 — бремя ОТ", COUNTRIES[5]["edo"]["sources"][0]),
+            ("Кения", "KICA 83P + Evidence Act 106B", "OSHA молчит об e‑журнале; в суде — 106B", "Без сертификата 106B электронная запись снимается", COUNTRIES[6]["edo"]["sources"][0]),
         ],
     )
     add_heading(doc, "4. Кластеры")
-    add_para(
+    add_cited_para(
         doc,
         "Кластер A — ЕС‑четвёрка (Германия, Испания, Ирландия, Франция). Общий eIDAS, разный национальный слой. "
         "Германия смягчает трудовую форму (Textform) и не требует подписи на инструктаже. "
         "Испания даёт самую удобную процессуальную презумпцию квалифицированному сервису. "
         "Франция — самая строгая презумпция (только QES) и отдельно бьёт по скану подписи. "
         "Ирландия добавляет common law: согласие и notice важнее сертификата.",
+        [COUNTRIES[0]["edo"]["sources"][0], COUNTRIES[3]["edo"]["sources"][0], COUNTRIES[5]["edo"]["sources"][1], COUNTRIES[4]["edo"]["sources"][0]],
     )
-    add_para(
+    add_cited_para(
         doc,
         "Кластер B — Сербия. Закон об ЭДО как в ЕС, суды формалистичны по QES, а правилник 2025 г. вывел учёт обучения (Form 6) на бумагу. "
         "Это «электронная ОТ минус журнал обучения».",
+        COUNTRIES[2]["edo"]["sources"][:1] + COUNTRIES[2]["ot"]["sources"][:2],
     )
-    add_para(
+    add_cited_para(
         doc,
         "Кластер C — Беларусь. PKI как в РФ/Казахстане, но п. 35 Инструкции № 175 прямо легализует электронный журнал. "
         "Это единственный в семёрке положительный статутный образец для журналов инструктажа.",
+        COUNTRIES[1]["edo"]["sources"][:1] + COUNTRIES[1]["ot"]["sources"][:1],
     )
-    add_para(
+    add_cited_para(
         doc,
         "Кластер D — Кения. Подпись может равняться wet ink, но суд не примет электронную запись без 106B. "
         "ОТ‑закон 2007 г. про обучение молчит о носителе. Цифровизация без доказательственного конверта здесь опаснее, чем в ЕС.",
+        COUNTRIES[6]["edo"]["sources"][:3] + COUNTRIES[6]["ot"]["sources"][:1],
     )
     add_heading(doc, "5. Шкала «можно ли вести журнал обучения / инструктажа электронно»")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
-            "Явно да, специальной нормой: Беларусь (п. 35 Инстр. 175).",
-            "Фактически да, потому что закон не требует подписи журнала: Германия (§ 12 ArbSchG).",
-            "Да через общие правила ЭДО / eIDAS, без запрета: Испания, Ирландия, Франция.",
-            "Да для большинства форм ОТ, нет для учёта обучения: Сербия (Form 6).",
-            "Закон молчит, суд может не допустить e‑запись без сертификата: Кения.",
+            ("Явно да, специальной нормой: Беларусь (п. 35 Инстр. 175).", COUNTRIES[1]["ot"]["sources"][:1]),
+            ("Фактически да, потому что закон не требует подписи журнала: Германия (§ 12 ArbSchG).", COUNTRIES[0]["ot"]["sources"][:3]),
+            ("Да через общие правила ЭДО / eIDAS, без запрета: Испания, Ирландия, Франция.", [COUNTRIES[3]["ot"]["sources"][0], COUNTRIES[4]["ot"]["sources"][-1], COUNTRIES[5]["ot"]["sources"][0]]),
+            ("Да для большинства форм ОТ, нет для учёта обучения: Сербия (Form 6).", COUNTRIES[2]["ot"]["sources"][:2]),
+            ("Закон молчит, суд может не допустить e‑запись без сертификата: Кения.", COUNTRIES[6]["edo"]["sources"][2:4] + COUNTRIES[6]["ot"]["sources"][:1]),
         ],
     )
     add_heading(doc, "6. Источники (сводные)")
     srcs = []
     for c in COUNTRIES:
-        srcs.extend(c["edo"]["sources"][:1])
-        srcs.extend(c["ot"]["sources"][:1])
+        srcs.extend(c["edo"]["sources"])
+        srcs.extend(c["ot"]["sources"])
     add_source_list(doc, srcs)
     return save(doc, PACK / "04_Сравнение_стран" / "Сравнение_семи_стран_между_собой.docx")
 
@@ -1170,98 +1215,109 @@ def build_compare_rf() -> Path:
         "63‑ФЗ, ст. 22.1–22.3 ТК, ПП 2464, 315‑ФЗ (август 2026)",
     )
     add_heading(doc, "1. Российская точка отсчёта")
-    add_bullets(doc, RF_BASE)
-    add_bullets(doc, RF_OT)
+    add_cited_bullets(doc, RF_BASE, RF_SOURCES)
+    add_cited_bullets(doc, RF_OT, RF_OT_SRC)
     add_heading(doc, "2. Главный вывод")
-    add_para(
+    add_cited_para(
         doc,
         "Среди семи стран Россия остаётся единственной, где кадровый кодекс прямо выводит из ЭДО документы об инструктаже по охране труда и акты о несчастном случае (ст. 22.1 ч. 3 ТК РФ). "
         "Это не «общемировой стандарт», а национальный выбор. Ближайший противоположный образец в этой семёрке — Беларусь (п. 35 Инструкции № 175). "
         "Ближайший «частичный» образец запрета — Сербия (Form 6 на бумаге при электронных остальных формах ОТ). "
         "ЕС‑четвёрка запрета не знает: там спорят о содержании обучения и о силе подписи, а не о праве вести журнал электронно.",
+        [RF_OT_SRC[0], COUNTRIES[1]["ot"]["sources"][0], COUNTRIES[2]["ot"]["sources"][0], COUNTRIES[0]["ot"]["sources"][1]],
     )
     add_heading(doc, "3. Сводная таблица с РФ")
     add_table(
         doc,
-        ("Вопрос", "РФ", "Как в семёрке"),
+        ("Вопрос", "РФ", "Как в семёрке", "Проверить"),
         [
             (
                 "Иерархия подписи",
                 "ПЭП / УНЭП / УКЭП (63‑ФЗ)",
                 "DE/ES/IE/FR/RS — SES/AES/QES. BY — ЭЦП. KE — advanced e‑signature без европейской лестницы",
+                RF_SOURCES[0],
             ),
             (
                 "Презумпция подлинности",
                 "Сильнее у УКЭП; отдельной «штрафной» презумпции как LEC 326.4 нет",
                 "ES — LEC 326.4 + штраф. FR — только QES (Cass. 2026). KE — вход через 106B, не через вид ЭП",
+                COUNTRIES[3]["edo"]["sources"][1],
             ),
             (
                 "Кадровый ЭДО",
                 "Ст. 22.1–22.3 ТК, согласие работника",
                 "DE с 2025 — Textform для многих кадровых документов. IE/ES/FR — eIDAS + трудовые кодексы без отдельного «КЭДО»",
+                RF_SOURCES[2],
             ),
             (
                 "Журнал инструктажа / обучение ОТ",
                 "Исключён из КЭДО (ст. 22.1(3))",
                 "BY — прямо можно. DE — подпись не обязательна. RS — Form 6 бумага. ES/IE/FR — нет запрета. KE — молчание OSHA + 106B",
+                RF_OT_SRC[0],
             ),
             (
                 "Акт НС",
                 "Исключён из КЭДО",
                 "Ни одна из семи не копирует этот запрет. Учёт НС везде статутный; носитель обычно не запрещён",
+                RF_OT_SRC[0],
             ),
             (
                 "Трансграничность",
                 "Ст. 7 63‑ФЗ, ДТС ЕАЭС, 315‑ФЗ (2026)",
                 "ЕС — взаимное QES. BY — тот же контур ЕАЭС. RS/KE — без автоматического признания с ЕС/РФ",
+                RF_SOURCES[1],
             ),
         ],
     )
     add_heading(doc, "4. Что похоже на РФ")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
-            "Беларусь: та же PKI‑логика ЭЦП и отдельный закон об электронном документе; общий контур ЕАЭС.",
-            "Сербия и Франция: суды чувствительны к квалифицированной подписи (без QES нет «подписи» / нет презумпции).",
-            "Все семь + РФ: после НС работодатель доказывает меры и обучение.",
-            "Ирландия: есть список исключений из ЭДО (но это wills/deeds/affidavits, не журналы ОТ).",
+            ("Беларусь: та же PKI‑логика ЭЦП и отдельный закон об электронном документе; общий контур ЕАЭС.", COUNTRIES[1]["edo"]["sources"][:1] + [RF_SOURCES[4]]),
+            ("Сербия и Франция: суды чувствительны к квалифицированной подписи (без QES нет «подписи» / нет презумпции).", COUNTRIES[2]["edo"]["sources"][:1] + COUNTRIES[5]["edo"]["sources"][:1]),
+            ("Все семь + РФ: после НС работодатель доказывает меры и обучение.", RF_OT_SRC[:2] + COUNTRIES[5]["ot"]["sources"][:1]),
+            ("Ирландия: есть список исключений из ЭДО (но это wills/deeds/affidavits, не журналы ОТ).", COUNTRIES[4]["edo"]["sources"][:2]),
         ],
     )
     add_heading(doc, "5. Чем РФ отличается")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
-            "Уникальный статутный запрет журналов инструктажа и актов НС в КЭДО.",
-            "Развитый институт операторов ЭДО / КЭДО, которого нет в немецком Textform и в ирландском ECA.",
-            "Нет нормы в духе LEC 326.4 (презумпция + штраф за легкомысленное оспаривание квалифицированного документа).",
-            "Нет нормы в духе кенийского 106B (универсальный сертификат компьютера) — и это скорее плюс для массовых журналов.",
-            "315‑ФЗ (04.08.2026) закрывает УКЭП международных организаций — точечная новация, которой в семёрке нет.",
+            ("Уникальный статутный запрет журналов инструктажа и актов НС в КЭДО.", RF_OT_SRC[:1]),
+            ("Развитый институт операторов ЭДО / КЭДО, которого нет в немецком Textform и в ирландском ECA.", [RF_SOURCES[2], COUNTRIES[4]["edo"]["sources"][0]]),
+            ("Нет нормы в духе LEC 326.4 (презумпция + штраф за легкомысленное оспаривание квалифицированного документа).", COUNTRIES[3]["edo"]["sources"][:2]),
+            ("Нет нормы в духе кенийского 106B (универсальный сертификат компьютера) — и это скорее плюс для массовых журналов.", COUNTRIES[6]["edo"]["sources"][2:4]),
+            ("315‑ФЗ (04.08.2026) закрывает УКЭП международных организаций — точечная новация, которой в семёрке нет.", [RF_SOURCES[3]]),
         ],
     )
     add_heading(doc, "6. Что имеет смысл заимствовать (для гл. 3 НИР)")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
-            "Беларусь, п. 35 Инстр. 175: легализовать электронный журнал при идентификации, метке времени и защите от правок — без обязательной УКЭП у каждого рабочего.",
-            "Германия: привязать электронный инструктаж к оценке рисков (содержание, не «галочка»).",
-            "Испания, LEC 326.4: презумпция для журнала, подписанного УКЭП / квалифицированной меткой времени ответственным лицом.",
-            "Франция, 21‑19.841 и 24‑21.034: скан ≠ ЭП; презумпция только у квалифицированной подписи.",
-            "Сербия: если оставлять исключения, делать их точечными (обучение), а не широкими (все документы ОТ + акты НС).",
-            "Кения (от противного): не вводить 106B‑подобный барьер, иначе электронный журнал умрёт в процессе.",
+            ("Беларусь, п. 35 Инстр. 175: легализовать электронный журнал при идентификации, метке времени и защите от правок — без обязательной УКЭП у каждого рабочего.", COUNTRIES[1]["ot"]["sources"][:1]),
+            ("Германия: привязать электронный инструктаж к оценке рисков (содержание, не «галочка»).", COUNTRIES[0]["ot"]["sources"][:3]),
+            ("Испания, LEC 326.4: презумпция для журнала, подписанного УКЭП / квалифицированной меткой времени ответственным лицом.", COUNTRIES[3]["edo"]["sources"][:2]),
+            ("Франция, 21‑19.841 и 24‑21.034: скан ≠ ЭП; презумпция только у квалифицированной подписи.", COUNTRIES[5]["edo"]["sources"][:1] + COUNTRIES[5]["ot"]["sources"][1:]),
+            ("Сербия: если оставлять исключения, делать их точечными (обучение), а не широкими (все документы ОТ + акты НС).", COUNTRIES[2]["ot"]["sources"][:2]),
+            ("Кения (от противного): не вводить 106B‑подобный барьер, иначе электронный журнал умрёт в процессе.", COUNTRIES[6]["edo"]["sources"][2:4]),
         ],
     )
     add_heading(doc, "7. Что не переносить")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
-            "Немецкий отказ от подписи на инструктаже — без российских компенсаторов журнал исторически главное доказательство.",
-            "Испанскую мягкость к pantallazos WhatsApp — на журналы ОТ.",
-            "Кенийский 106B как универсальное условие допустимости.",
-            "Сербский процессуальный формализм «e‑mail без QES не существует» — на все внутренние регистры ОТ.",
+            ("Немецкий отказ от подписи на инструктаже — без российских компенсаторов журнал исторически главное доказательство.", COUNTRIES[0]["ot"]["sources"][:3] + RF_OT_SRC[:1]),
+            ("Испанскую мягкость к pantallazos WhatsApp — на журналы ОТ.", COUNTRIES[3]["edo"]["sources"][-1:]),
+            ("Кенийский 106B как универсальное условие допустимости.", COUNTRIES[6]["edo"]["sources"][2:4]),
+            ("Сербский процессуальный формализм «e‑mail без QES не существует» — на все внутренние регистры ОТ.", COUNTRIES[2]["edo"]["sources"][:2]),
         ],
     )
-    add_heading(doc, "8. Источники по РФ")
-    add_source_list(doc, RF_SOURCES + RF_OT_SRC[:2])
+    add_heading(doc, "8. Источники по РФ и по семёрке")
+    srcs = list(RF_SOURCES + RF_OT_SRC[:2])
+    for c in COUNTRIES:
+        srcs.extend(c["edo"]["sources"][:1])
+        srcs.extend(c["ot"]["sources"][:1])
+    add_source_list(doc, srcs)
     return save(doc, PACK / "04_Сравнение_стран" / "Сравнение_с_Россией.docx")
 
 
@@ -1273,13 +1329,14 @@ def build_compare_cases() -> Path:
         "По каждому государству: практика об ЭДО в целом и практика об ЭДО / доказывании в охране труда",
     )
     add_heading(doc, "1. Метод и оговорка")
-    add_para(
+    add_cited_para(
         doc,
         "По каждому государству собраны две карточки. Первая — про электронный документ / подпись / допустимость в суде. "
         "Вторая — про охрану труда. Отдельных опубликованных решений «электронный журнал инструктажа ничтожен / действителен» почти нет "
         "(кроме нормативной легализации в Беларуси и нормативного запрета Form 6 в Сербии). "
         "Где прямого дела нет, карточка помечена как аналогия: ближайшее реальное дело о содержании обучения / бремени мер / форме подписи. "
         "Номера дел не вымышлены.",
+        [COUNTRIES[1]["ot"]["sources"][0], COUNTRIES[2]["ot"]["sources"][0], RF_OT_SRC[0]],
     )
     add_heading(doc, "2. Сводная таблица 14 практик")
     rows = []
@@ -1292,6 +1349,7 @@ def build_compare_cases() -> Path:
                 "прямая" if not e["analog"] else "аналогия",
                 e["cite"],
                 e["title"],
+                e["sources"][0],
             )
         )
         rows.append(
@@ -1301,11 +1359,12 @@ def build_compare_cases() -> Path:
                 "прямая" if not o["analog"] else "аналогия",
                 o["cite"],
                 o["title"],
+                o["sources"][0],
             )
         )
-    add_table(doc, ("Страна", "Срез", "Тип", "Цитата", "Сюжет"), rows)
+    add_table(doc, ("Страна", "Срез", "Тип", "Цитата", "Сюжет", "Проверить"), rows)
     add_heading(doc, "3. Чем практики похожи")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
             "Суды везде отделяют «файл существует» от «файл допустим и доказывает нужный факт».",
@@ -1314,49 +1373,54 @@ def build_compare_cases() -> Path:
             "Скан / pantallazos / клик без идентификации нигде не получают автоматической силы QES/ЭЦП.",
             "Ни один суд не сформулировал правило «электронная форма инструктажа всегда ничтожна» — такого запрета в практике нет; запреты, где они есть, статутные (РФ, сербский Form 6).",
         ],
+        [c["case_edo"]["sources"][0] for c in COUNTRIES] + [RF_OT_SRC[0]],
     )
     add_heading(doc, "4. Чем различаются")
-    add_para(
+    add_cited_para(
         doc,
         "Ось A — презумпция против свободной оценки. Испания (LEC 326.4) и Франция (только QES) стоят на презумпции, но по‑разному: Испания даёт её квалифицированному сервису и штрафует легкомысленное оспаривание; Франция в 2026 г. запретила презумпцию, пока не доказан qualified‑статус. "
         "Ирландия и (уголовная) Испания по WhatsApp ближе к свободной оценке. Кения формально имеет презумпции Evidence Act, но вход перекрыт 106B.",
+        [COUNTRIES[3]["edo"]["sources"][1], COUNTRIES[5]["edo"]["sources"][0], COUNTRIES[6]["edo"]["sources"][2]],
     )
-    add_para(
+    add_cited_para(
         doc,
         "Ось B — канал подачи. Сербия (Конституционный суд 2023, Ниш Gž 1664/20) и Кения (KEELC 392) могут счесть электронный акт несуществующим из‑за канала/сертификата. "
         "Германия (BGH 155/23) бьёт не по каналу суда, а по возможности адресата проверить QES.",
+        [COUNTRIES[2]["case_edo"]["sources"][0], COUNTRIES[6]["case_edo"]["sources"][0], COUNTRIES[0]["case_edo"]["sources"][0]],
     )
-    add_para(
+    add_cited_para(
         doc,
         "Ось C — охрана труда. Беларусь закрывает вопрос нормой (журнал можно), а не судом. Сербия закрывает вопрос нормой (Form 6 нельзя). "
         "Германия (BAG 104/09) и Ирландия (Redmond) закрывают вопрос содержанием обучения. Франция (22‑15.624) — бременем мер после НС. "
         "Кения (Bigot Flowers) — статутной обязанностью обучить по OSHA s. 99.",
+        [COUNTRIES[1]["ot"]["sources"][0], COUNTRIES[2]["ot"]["sources"][0], COUNTRIES[0]["case_ot"]["sources"][0], COUNTRIES[4]["case_ot"]["sources"][0], COUNTRIES[5]["case_ot"]["sources"][0], COUNTRIES[6]["case_ot"]["sources"][0]],
     )
     add_heading(doc, "5. Сопоставление с Россией")
-    add_bullets(
+    add_cited_bullets(
         doc,
         [
-            "Российская ст. 22.1(3) ТК — статутный запрет носителя, а не вывод суда. Среди 14 карточек нет судебного «подтверждения», что электронный журнал ОТ всегда недопустим.",
-            "Белорусская линия ст. 84 ХПК + п. 35 Инстр. 175 показывает, как тот же постсоветский журнал становится электронным доказательством без ломки процесса.",
-            "Французские 24‑21.034 и 21‑19.841 полезны против «клик‑журналов» и сканов подписи — это можно внедрить, не сохраняя запрет ст. 22.1(3).",
-            "Кенийский 106B показывает риск, которого РФ лучше избежать: дополнительный процессуальный ярлык убьёт массовый электронный инструктаж.",
-            "Немецкий Zugang (BGH) стоит учесть для уведомлений и юридически значимых сообщений, не обязательно для внутренней отметки в журнале.",
+            ("Российская ст. 22.1(3) ТК — статутный запрет носителя, а не вывод суда. Среди 14 карточек нет судебного «подтверждения», что электронный журнал ОТ всегда недопустим.", RF_OT_SRC[:1]),
+            ("Белорусская линия ст. 84 ХПК + п. 35 Инстр. 175 показывает, как тот же постсоветский журнал становится электронным доказательством без ломки процесса.", COUNTRIES[1]["edo"]["sources"][3:4] + COUNTRIES[1]["ot"]["sources"][:1]),
+            ("Французские 24‑21.034 и 21‑19.841 полезны против «клик‑журналов» и сканов подписи — это можно внедрить, не сохраняя запрет ст. 22.1(3).", COUNTRIES[5]["case_edo"]["sources"][:1] + COUNTRIES[5]["ot"]["sources"][1:]),
+            ("Кенийский 106B показывает риск, которого РФ лучше избежать: дополнительный процессуальный ярлык убьёт массовый электронный инструктаж.", COUNTRIES[6]["edo"]["sources"][2:4]),
+            ("Немецкий Zugang (BGH) стоит учесть для уведомлений и юридически значимых сообщений, не обязательно для внутренней отметки в журнале.", COUNTRIES[0]["case_edo"]["sources"][:1]),
         ],
     )
     add_heading(doc, "6. Практический вывод для НИР")
-    add_para(
+    add_cited_para(
         doc,
         "Сравнивать «судебную практику ЭДО в ОТ» как набор одинаковых прецедентов нельзя: предмет судов разный. "
         "Корректная рамка — три вопроса, на которые страны отвечают по‑разному: (1) можно ли вообще вести запись электронно; "
         "(2) какая подпись/сервис даёт презумпцию; (3) доказывает ли запись именно обучение по данной опасности. "
         "РФ сейчас отвечает на (1) «нет» для журналов и актов НС в КЭДО. Семёрка в основном отвечает «да» на (1) и спорит про (2) и (3). "
         "Исключения: Сербия (нет на (1) только для Form 6) и Кения (да на (1) в законе ОТ, но «может быть нет» на допустимости в суде).",
+        [RF_OT_SRC[0], COUNTRIES[2]["ot"]["sources"][0], COUNTRIES[6]["edo"]["sources"][2]],
     )
     add_heading(doc, "7. Источники карточек")
     srcs = []
     for c in COUNTRIES:
-        srcs.extend(c["case_edo"]["sources"][:1])
-        srcs.extend(c["case_ot"]["sources"][:1])
+        srcs.extend(c["case_edo"]["sources"])
+        srcs.extend(c["case_ot"]["sources"])
     add_source_list(doc, srcs)
     return save(doc, PACK / "03_Судебная_практика" / "00_Сравнение_судебных_практик.docx")
 
@@ -1388,6 +1452,9 @@ def build_xlsx() -> Path:
                 cell.alignment = wrap
                 cell.border = thin
                 cell.font = Font(name="Calibri", size=10)
+                if isinstance(val, str) and val.startswith("http"):
+                    cell.hyperlink = val
+                    cell.font = Font(color="0563C1", name="Calibri", size=10)
             ws.row_dimensions[r].height = 72
 
     ws = wb.active
@@ -1401,6 +1468,7 @@ def build_xlsx() -> Path:
         "Доверие / УЦ",
         "Трансграничность",
         "Особенность",
+        "Ссылка для проверки",
     ]
     for i, h in enumerate(headers, start=1):
         ws.cell(1, i, h)
@@ -1409,7 +1477,7 @@ def build_xlsx() -> Path:
     for c in COUNTRIES:
         d = c["edo"]
         rows.append(
-            [c["name"], c["cluster"], d["acts"], d["legal_force"], d["signature"], d["trust"], d["crossborder"], d["feature"]]
+            [c["name"], c["cluster"], d["acts"], d["legal_force"], d["signature"], d["trust"], d["crossborder"], d["feature"], d["sources"][0][1]]
         )
     rows.append(
         [
@@ -1421,6 +1489,7 @@ def build_xlsx() -> Path:
             "Аккредитованные УЦ, операторы ЭДО, УЦ ФНС",
             "Ст. 7 63‑ФЗ, договоры, ДТС ЕАЭС",
             "Отдельный КЭДО; ст. 22.1(3) выводит журналы инструктажа и акты НС",
+            RF_SOURCES[0][1],
         ]
     )
     dump_rows(ws, 2, rows)
@@ -1432,6 +1501,7 @@ def build_xlsx() -> Path:
         "Можно ли e‑журнал / e‑учёт обучения",
         "Подпись",
         "Сравнение с ст. 22.1(3) ТК РФ",
+        "Ссылка для проверки",
     ]
     for i, h in enumerate(headers2, start=1):
         ws2.cell(1, i, h)
@@ -1439,7 +1509,7 @@ def build_xlsx() -> Path:
     rows2 = []
     for c in COUNTRIES:
         d = c["ot"]
-        rows2.append([c["name"], d["acts"], d["legal_force"], d["signature"], d["compare"][1] if len(d["compare"]) > 1 else d["compare"][0]])
+        rows2.append([c["name"], d["acts"], d["legal_force"], d["signature"], d["compare"][1] if len(d["compare"]) > 1 else d["compare"][0], d["sources"][0][1]])
     rows2.append(
         [
             "Российская Федерация",
@@ -1447,12 +1517,13 @@ def build_xlsx() -> Path:
             "Нет в контуре КЭДО: журналы инструктажа и акты НС исключены",
             "На практике бумажный журнал",
             "Национальный запрет носителя, не вытекающий из eIDAS/113‑З",
+            RF_OT_SRC[0][1],
         ]
     )
     dump_rows(ws2, 2, rows2)
 
     ws3 = wb.create_sheet("C_Судебная_практика")
-    headers3 = ["Страна", "Срез", "Тип", "Суд", "Цитата", "Сюжет", "Аналогия?"]
+    headers3 = ["Страна", "Срез", "Тип", "Суд", "Цитата", "Сюжет", "Аналогия?", "Ссылка для проверки"]
     for i, h in enumerate(headers3, start=1):
         ws3.cell(1, i, h)
     style_header(ws3, 1, len(headers3))
@@ -1468,6 +1539,7 @@ def build_xlsx() -> Path:
                     case["cite"],
                     case["title"],
                     "да" if case["analog"] else "нет",
+                    case["sources"][0][1] if case.get("sources") else "",
                 ]
             )
     dump_rows(ws3, 2, rows3)
@@ -1488,9 +1560,9 @@ def build_xlsx() -> Path:
     dump_rows(ws4, 4, notes)
 
     for wsx, widths in (
-        (ws, [18, 22, 42, 42, 36, 32, 32, 40]),
-        (ws2, [18, 50, 50, 42, 42]),
-        (ws3, [16, 10, 12, 36, 50, 50, 12]),
+        (ws, [18, 22, 42, 42, 36, 32, 32, 40, 42]),
+        (ws2, [18, 50, 50, 42, 42, 42]),
+        (ws3, [16, 10, 12, 36, 50, 50, 12, 42]),
         (ws4, [22, 100]),
     ):
         for i, w in enumerate(widths, start=1):
@@ -1571,6 +1643,13 @@ def build_readme() -> list[Path]:
 -------------------
 Номера дел не вымышлены. Где нет опубликованного спора именно об электронном журнале ОТ,
 файл помечен как «аналогия» и берёт ближайшее реальное дело (обучение, бремя мер, форма подписи).
+
+Как проверять источники
+-----------------------
+В каждом Word после блока фактов есть строка «Проверить» — кликабельная ссылка
+на официальный текст закона или судебное решение. В таблицах есть колонка «Проверить».
+В Excel кликабельны колонки «Ссылка для проверки» / «Ссылка 1» / «Ссылка 2».
+Номера дел не вымышлены; если карточка — аналогия, это прямо написано.
 
 Как пользоваться
 ----------------

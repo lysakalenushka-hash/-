@@ -38,6 +38,7 @@ RF_EDO = [
     "Электронный документ не отвергается только из‑за формы, но нет статутной презумпции как LEC 326.4 и нет фильтра 106B",
     "Сравнивать с зарубежными делами нужно по допустимости и виду ЭП, а не по «журналу инструктажа» — его РФ вывела законом (ст. 22.1(3) ТК), а не судом",
     "https://www.consultant.ru/document/cons_doc_LAW_181602/",
+    "https://www.consultant.ru/document/cons_doc_LAW_112701/",
 ]
 
 RF_OT = [
@@ -49,6 +50,7 @@ RF_OT = [
     "Запрет носителя — законодательный выбор, среди зарубежных карточек нет судебного правила «электронный журнал ОТ всегда ничтожен»",
     "Для гл. 3 НИР: зарубежная практика спорит о содержании обучения и силе подписи; РФ закрыла вопрос носителя нормой ТК",
     "https://www.consultant.ru/document/cons_doc_LAW_34683/",
+    "https://www.consultant.ru/document/cons_doc_LAW_405146/",
 ]
 
 
@@ -97,6 +99,7 @@ def analog_label(case: dict) -> str:
 
 def edo_row(c: dict) -> list:
     case = c["case_edo"]
+    urls = [s[1] for s in case.get("sources") or []]
     return [
         c["name"],
         case["court"],
@@ -105,12 +108,14 @@ def edo_row(c: dict) -> list:
         case["title"],
         case["holding"],
         meaning_text(case),
-        case_url(case),
+        urls[0] if urls else "",
+        urls[1] if len(urls) > 1 else "",
     ]
 
 
 def ot_row(c: dict) -> list:
     case = c["case_ot"]
+    urls = [s[1] for s in case.get("sources") or []]
     return [
         c["name"],
         case["court"],
@@ -119,7 +124,8 @@ def ot_row(c: dict) -> list:
         case["title"],
         case["holding"],
         meaning_text(case),
-        case_url(case),
+        urls[0] if urls else "",
+        urls[1] if len(urls) > 1 else "",
     ]
 
 
@@ -155,7 +161,7 @@ def add_compare_sheet(wb, headers: list[str], rows: list[list], name: str = "С�
     for r, row in enumerate(rows, start=2):
         write_row(ws, r, row, height=92)
     ws.freeze_panes = "B2"
-    set_widths(ws, [22, 36, 48, 16, 42, 52, 48, 42])
+    set_widths(ws, [22, 36, 48, 16, 42, 52, 48, 42, 42])
 
 
 def add_recs_sheet(wb, add_items: list[str], dont_items: list[str], horizon: list[str]) -> None:
@@ -204,7 +210,8 @@ CASE_HEADERS = [
     "Сюжет",
     "Правовая позиция",
     "Значение для РФ / НИР",
-    "Ссылка",
+    "Ссылка 1 (проверить)",
+    "Ссылка 2 (проверить)",
 ]
 
 
@@ -333,6 +340,7 @@ def build_compare_xlsx(path: Path) -> Path:
             ("Похожи", "Суды отделяют «файл существует» от «файл доказывает нужный факт». Скан/клик без идентификации нигде не равен QES/ЭЦП. Нет судебного правила «e‑форма инструктажа всегда ничтожна»."),
             ("Различаются", "Презумпция (ES LEC 326.4; FR только QES) vs свободная оценка (IE, pantallazos). Канал подачи (RS, KE 106B, DE Zugang). ОТ: норма BY/RS vs содержание обучения DE/IE/FR."),
             ("Vs РФ", "Ст. 22.1(3) ТК — статутный запрет носителя. Среди 14 карточек нет судебного подтверждения, что электронный журнал ОТ всегда недопустим."),
+            ("Как проверить", "В таблице «Все_14_практик» колонки «Ссылка 1» и «Ссылка 2» кликабельны: это текст дела или официальная норма. Лист «Источники» дублирует полный список URL."),
         ],
     )
     all_rows = []
@@ -348,7 +356,8 @@ def build_compare_xlsx(path: Path) -> Path:
                 e["title"],
                 e["holding"],
                 meaning_text(e),
-                case_url(e),
+                e["sources"][0][1] if e.get("sources") else "",
+                e["sources"][1][1] if len(e.get("sources") or []) > 1 else "",
             ]
         )
         all_rows.append(
@@ -361,7 +370,8 @@ def build_compare_xlsx(path: Path) -> Path:
                 o["title"],
                 o["holding"],
                 meaning_text(o),
-                case_url(o),
+                o["sources"][0][1] if o.get("sources") else "",
+                o["sources"][1][1] if len(o.get("sources") or []) > 1 else "",
             ]
         )
     add_compare_sheet(
@@ -375,7 +385,8 @@ def build_compare_xlsx(path: Path) -> Path:
             "Сюжет",
             "Правовая позиция",
             "Значение для НИР",
-            "Ссылка",
+            "Ссылка 1 (проверить)",
+            "Ссылка 2 (проверить)",
         ],
         all_rows,
         name="Все_14_практик",
@@ -415,37 +426,43 @@ def build_compare_xlsx(path: Path) -> Path:
     ws2["A1"] = "Вопрос"
     ws2["B1"] = "РФ"
     ws2["C1"] = "Семь стран (по карточкам)"
-    style_header_row(ws2, 1, 3)
+    ws2["D1"] = "Ссылка для проверки"
+    style_header_row(ws2, 1, 4)
     rf_rows = [
         (
             "Откуда запрет e‑журнала ОТ",
             "Ст. 22.1 ч. 3 ТК — статут",
             "Судебного запрета нет. BY — прямое разрешение нормой. RS — бумажный Form 6. DE/ES/IE/FR — содержание обучения",
+            "https://www.consultant.ru/document/cons_doc_LAW_34683/",
         ),
         (
             "Презумпция ЭП",
             "Сильнее у УКЭП; нет штрафа за оспаривание как LEC 326.4",
             "FR 2026: презумпция только у QES. ES: презумпция квалифицированного сервиса. KE: вход через 106B",
+            "https://www.boe.es/buscar/act.php?id=BOE-A-2000-323#a326",
         ),
         (
             "Скан / картинка подписи",
             "На практике слабое доказательство; отдельного «антискана» как Cass. 21‑19.841 нет в кодексе",
             "Франция прямо: скан ≠ электронная подпись (1367), но не всегда «нет подписи»",
+            "https://kpmg.com/av/fr/avocats/eclairages/2023/01/valeur-juridique-de-la-signature-numerisee.html",
         ),
         (
             "Допустимость e‑записи в суде",
             "АПК/ГПК + Пленум № 25: если достоверность устанавливается",
             "BY ст. 84 ХПК прямо включает эл. документы. KE без 106B снимает даже «живой» файл",
+            "https://www.consultant.ru/document/cons_doc_LAW_181602/",
         ),
         (
             "Что брать в гл. 3",
             "Точка отсчёта — 63‑ФЗ, 22.1 ТК, 2464, 315‑ФЗ",
             "BY п. 35 — положительная модель журнала. FR/ES — презумпция и антискан. DE Zugang — для уведомлений, не обязательно для внутренней отметки",
+            "https://www.mintrud.gov.by/uploads/files/MTiSZ-175-po-sost.-na-02.09.2024.pdf",
         ),
     ]
     for i, row in enumerate(rf_rows, start=2):
         write_row(ws2, i, list(row), height=72)
-    set_widths(ws2, [32, 50, 85])
+    set_widths(ws2, [32, 50, 85, 42])
 
     ws3 = wb.create_sheet("Легенда")
     ws3["A1"] = "Легенда"
