@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <!-- Subtle dotted grid -->
+    <pattern id="gridDots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.2" fill="#E6E6E6"/>
+    </pattern>
+
+    <style>
+      .headerTitle { font: 700 44px Arial, Helvetica, sans-serif; letter-spacing: 1px; fill:#222; }
+      .headerSub { font: 400 22px Arial, Helvetica, sans-serif; fill:#666; }
+      .tokenLabel { font: 700 18px Arial, Helvetica, sans-serif; fill:#666; }
+      .tokenSub { font: 400 16px Arial, Helvetica, sans-serif; fill:#777; }
+      .strokeDark { stroke:#1F1F1F; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+      .strokeBlue { stroke:#1E88E5; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+      .strokeRed { stroke:#CC0000; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+      .strokeGreen { stroke:#2E7D32; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+      .strokeAmber { stroke:#F4B400; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+      .strokeSlate { stroke:#455A64; stroke-width:6; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+      .fillLight { fill:#FAFAFA; }
+      .fillToken { fill:#FFFFFF; }
+      .strokeToken { stroke:#D0D0D0; stroke-width:3; }
+      .crossRedV { stroke:#CC0000; stroke-width:12; stroke-linecap:round; }
+      .crossRedH { stroke:#CC0000; stroke-width:12; stroke-linecap:round; }
+      .noFill { fill="none"; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1920" height="1080" fill="#FFFFFF"/>
+  <rect width="1920" height="1080" fill="url(#gridDots)" opacity="0.45"/>
+
+  <!-- Header -->
+  <g transform="translate(0,0)">
+    <text x="960" y="95" text-anchor="middle" class="headerTitle">"'   )</text>
+    <text x="960" y="135" text-anchor="middle" class="headerSub">(",/)</text>
+    <line x1="420" y1="160" x2="1500" y2="160" stroke="#9E9E9E" stroke-width="4"/>
+  </g>
+
+  <!-- Central kit -->
+  <g id="kit" transform="translate(0,0)">
+    <!-- Kit suitcase -->
+    <rect x="820" y="310" width="280" height="230" rx="28" class="fillToken" stroke="#BDBDBD" stroke-width="5"/>
+    <!-- Lid -->
+    <rect x="790" y="290" width="340" height="70" rx="24" class="fillToken" stroke="#BDBDBD" stroke-width="5"/>
+    <!-- Cross -->
+    <circle cx="960" cy="425" r="46" fill="none" stroke="#CC0000" stroke-width="8"/>
+    <line x1="960" y1="390" x2="960" y2="460" class="crossRedV"/>
+    <line x1="925" y1="425" x2="995" y2="425" class="crossRedH"/>
+  </g>
+
+  <!-- Token component helper via repeated groups -->
+  <!-- Tokens: each token is a rounded rect with icon + label -->
+
+  <!-- Left column X=70 -->
+  <g class="token" transform="translate(70,230)">
+    <rect width="220" height="150" rx="24" class="fillToken" class="fillLight" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Gloves icon -->
+    <path d="M70 70
+             C70 50, 92 40, 108 48
+             C115 30, 145 30, 152 48
+             C168 40, 190 50, 190 70
+             L190 95
+             C190 115, 175 125, 160 125
+             L100 125
+             C85 125, 70 115, 70 95 Z"
+          fill="#1E88E5" opacity="0.18" stroke="#1E88E5" stroke-width="4"/>
+    <path d="M110 55 C110 70, 110 90, 110 110" class="strokeBlue"/>
+    <path d="M150 55 C150 70, 150 90, 150 110" class="strokeBlue"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel"> '"</text>
+  </g>
+
+  <g class="token" transform="translate(70,400)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Rolled bandage -->
+    <rect x="55" y="55" width="110" height="40" rx="18" fill="#F4B400" opacity="0.18" stroke="#F4B400" stroke-width="4"/>
+    <path d="M55 70 C75 60, 135 60, 165 70" class="strokeAmber"/>
+    <path d="M55 85 C75 95, 135 95, 165 85" class="strokeAmber"/>
+    <circle cx="75" cy="70" r="7" fill="#F4B400" opacity="0.2" stroke="#F4B400" stroke-width="3"/>
+    <circle cx="145" cy="70" r="7" fill="#F4B400" opacity="0.2" stroke="#F4B400" stroke-width="3"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">"</text>
+  </g>
+
+  <g class="token" transform="translate(70,570)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Gauze pads -->
+    <rect x="60" y="55" width="105" height="70" rx="16" fill="#2E7D32" opacity="0.18" stroke="#2E7D32" stroke-width="4"/>
+    <path d="M80 75 C92 65, 105 65, 115 75" class="strokeGreen"/>
+    <path d="M80 95 C92 105, 105 105, 115 95" class="strokeGreen"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">!$"</text>
+  </g>
+
+  <g class="token" transform="translate(70,740)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Scissors -->
+    <circle cx="85" cy="85" r="12" fill="#FF6F00" opacity="0.18" stroke="#FF6F00" stroke-width="4"/>
+    <circle cx="150" cy="85" r="12" fill="#FF6F00" opacity="0.18" stroke="#FF6F00" stroke-width="4"/>
+    <path d="M95 85 L145 110" stroke="#FF6F00" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <path d="M95 85 L145 60" stroke="#FF6F00" stroke-width="6" stroke-linecap="round" fill="none"/>
+    <circle cx="95" cy="85" r="6" fill="#FF6F00"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">&+</text>
+  </g>
+
+  <g class="token" transform="translate(70,910)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Instruction booklet -->
+    <rect x="55" y="55" width="110" height="80" rx="14" fill="#455A64" opacity="0.16" stroke="#455A64" stroke-width="4"/>
+    <line x1="110" y1="65" x2="110" y2="125" stroke="#455A64" stroke-width="5"/>
+    <rect x="68" y="80" width="78" height="18" rx="9" fill="#455A64" opacity="0.18"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">!" #&/</text>
+  </g>
+
+  <!-- Middle top tokens -->
+  <g class="token" transform="translate(450,230)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Notebook -->
+    <rect x="60" y="55" width="120" height="85" rx="18" fill="#455A64" opacity="0.14" stroke="#455A64" stroke-width="4"/>
+    <path d="M80 75 H160" class="strokeSlate"/>
+    <path d="M80 95 H145" class="strokeSlate"/>
+    <path d="M80 115 H155" class="strokeSlate"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">"</text>
+  </g>
+
+  <g class="token" transform="translate(1100,230)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Marker / pencil -->
+    <path d="M60 125 L95 90 L145 90 L170 115 L135 150 L60 150 Z" fill="#283593" opacity="0.14" stroke="#283593" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="105" y="70" width="10" height="90" rx="5" fill="#283593" opacity="0.12" stroke="#283593" stroke-width="4"/>
+    <path d="M115 70 L145 40" class="strokeSlate" stroke="#283593" />
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">  </text>
+  </g>
+
+  <!-- Right column -->
+  <g class="token" transform="translate(1420,230)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Adhesive plaster -->
+    <rect x="55" y="60" width="110" height="55" rx="16" fill="#1E88E5" opacity="0.14" stroke="#1E88E5" stroke-width="4"/>
+    <path d="M70 88 H150" class="strokeBlue"/>
+    <path d="M70 78 H130" class="strokeBlue"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">!"+ ,</text>
+  </g>
+
+  <g class="token" transform="translate(1420,400)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Antiseptic bottle -->
+    <path d="M105 55
+             C105 45, 115 45, 115 55
+             L115 65
+             C115 68, 135 68, 135 75
+             L135 135
+             C135 145, 105 145, 105 135
+             Z"
+          fill="#2E7D32" opacity="0.16" stroke="#2E7D32" stroke-width="4" />
+    <path d="M95 95 H145" class="strokeGreen"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">"!"</text>
+  </g>
+
+  <g class="token" transform="translate(1420,570)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Tourniquet -->
+    <path d="M110 65
+             C135 65, 150 80, 150 105
+             C150 130, 135 145, 110 145
+             C85 145, 70 130, 70 105
+             C70 80, 85 65, 110 65 Z"
+          fill="#CC0000" opacity="0.12" stroke="#CC0000" stroke-width="4"/>
+    <path d="M85 105 H135" stroke="#CC0000" stroke-width="6" stroke-linecap="round"/>
+    <rect x="95" y="80" width="30" height="50" rx="8" fill="#CC0000" opacity="0.14" stroke="#CC0000" stroke-width="4"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">#"</text>
+  </g>
+
+  <g class="token" transform="translate(1420,740)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Isothermal blanket (foil) -->
+    <path d="M65 95
+             L110 65
+             L155 95
+             L155 135
+             L65 135 Z"
+          fill="#BDBDBD" opacity="0.18" stroke="#BDBDBD" stroke-width="4"/>
+    <path d="M95 75 L125 105" stroke="#8D8D8D" stroke-width="4" stroke-linecap="round"/>
+    <path d="M80 105 L145 120" stroke="#8D8D8D" stroke-width="4" stroke-linecap="round"/>
+    <path d="M70 90 C95 120, 125 70, 150 100" stroke="#BDBDBD" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">" '!</text>
+  </g>
+
+  <g class="token" transform="translate(1420,910)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- CPR airway device -->
+    <rect x="70" y="55" width="80" height="90" rx="20" fill="#1565C0" opacity="0.14" stroke="#1565C0" stroke-width="4"/>
+    <path d="M100 85 C110 75, 120 85, 120 95" stroke="#1565C0" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <circle cx="110" cy="110" r="10" fill="#1565C0" opacity="0.22" stroke="#1565C0" stroke-width="4"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">#!" !"</text>
+  </g>
+
+  <!-- Mask token (middle-right below) -->
+  <g class="token" transform="translate(1100,570)">
+    <rect width="220" height="150" rx="24" fill="white" stroke="#D0D0D0" stroke-width="3"/>
+    <!-- Medical mask -->
+    <path d="M70 80
+             C70 65, 85 55, 110 55
+             C135 55, 150 65, 150 80
+             L150 115
+             C150 130, 135 140, 110 140
+             C85 140, 70 130, 70 115 Z"
+          fill="#37474F" opacity="0.14" stroke="#37474F" stroke-width="4"/>
+    <path d="M88 85 H132" stroke="#37474F" stroke-width="5" stroke-linecap="round"/>
+    <path d="M92 110 H128" stroke="#37474F" stroke-width="5" stroke-linecap="round"/>
+    <text x="110" y="145" text-anchor="middle" class="tokenLabel">!</text>
+  </g>
+</svg>
+
