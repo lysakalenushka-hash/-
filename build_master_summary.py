@@ -3,11 +3,14 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.cell import quote_sheetname
+from openpyxl.worksheet.hyperlink import Hyperlink as XLHyperlink
 
 from build_edo_countries import COUNTRIES as FIRST, RECS, RF_BASE, RF_SOURCES
 from build_seven_countries_pack import COUNTRIES as SEVEN, RF_OT, RF_OT_SRC
@@ -55,6 +58,125 @@ HEADERS = [
     "Источник",
     "Проверить",
 ]
+
+# Порядок листов = логика НИР, не алфавит. Имена листов — из графы «Показатель»
+# (символ «/» Excel не допускает — заменяется на «и»).
+INDICATOR_ORDER = [
+    "Основные акты",
+    "Юридическая сила",
+    "Модель подписи",
+    "УЦ / доверие",
+    "Трансграничность",
+    "Особенность модели",
+    "Акты ОТ",
+    "Можно ли e‑журнал / e‑учёт",
+    "Подпись / форма",
+    "E‑журнал (кратко)",
+    "E‑обучение (кратко)",
+    "Особенность ОТ",
+    "Доверие / система",
+    "Трансграничность ОТ",
+    "Обзор",
+    "Особенность",
+    "Сравнение с РФ",
+    "Что взять",
+    "Что не переносить",
+    "Значение для НИР",
+    "Тип карточки",
+    "Суд",
+    "Цитата",
+    "Сюжет",
+    "Фабула",
+    "Позиция суда",
+    "Источник",
+    "Смысл",
+    "За рубежом",
+    "РФ",
+    "РФ: можно ли электронно",
+    "Что проверяет суд / инспектор",
+    "Синтез",
+    "Горизонт",
+]
+
+SHEET_NAMES = {
+    "УЦ / доверие": "УЦ и доверие",
+    "Можно ли e‑журнал / e‑учёт": "e-журнал и e-учёт",
+    "Подпись / форма": "Подпись и форма",
+    "E‑журнал (кратко)": "E-журнал кратко",
+    "E‑обучение (кратко)": "E-обучение кратко",
+    "Доверие / система": "Доверие и система",
+    "Что проверяет суд / инспектор": "Что проверяет суд",
+    "РФ: можно ли электронно": "РФ можно ли электронно",
+}
+
+INDICATOR_CATEGORIES = [
+    (
+        "Нормы ЭДО — сравнение стран",
+        [
+            "Основные акты",
+            "Юридическая сила",
+            "Модель подписи",
+            "УЦ / доверие",
+            "Трансграничность",
+            "Особенность модели",
+        ],
+    ),
+    (
+        "Нормы охраны труда",
+        [
+            "Акты ОТ",
+            "Можно ли e‑журнал / e‑учёт",
+            "Подпись / форма",
+            "E‑журнал (кратко)",
+            "E‑обучение (кратко)",
+            "Особенность ОТ",
+            "Доверие / система",
+            "Трансграничность ОТ",
+        ],
+    ),
+    (
+        "Обзоры и заимствование",
+        [
+            "Обзор",
+            "Особенность",
+            "Сравнение с РФ",
+            "Что взять",
+            "Что не переносить",
+            "Значение для НИР",
+        ],
+    ),
+    (
+        "Судебные карточки",
+        ["Тип карточки", "Суд", "Цитата", "Сюжет", "Фабула", "Позиция суда"],
+    ),
+    (
+        "Источники, глоссарий, документы ОТ",
+        [
+            "Источник",
+            "Смысл",
+            "За рубежом",
+            "РФ",
+            "РФ: можно ли электронно",
+            "Что проверяет суд / инспектор",
+            "Синтез",
+            "Горизонт",
+        ],
+    ),
+]
+
+CAT_FILL = PatternFill("solid", fgColor="2E75B6")
+TOC_FILL = PatternFill("solid", fgColor="D6DCE4")
+MIN_OWN_SHEET = 3
+TAB_COLORS = {
+    "Нормы ЭДО — сравнение стран": "1F4E79",
+    "Нормы охраны труда": "548235",
+    "Обзоры и заимствование": "C65911",
+    "Судебные карточки": "833C0C",
+    "Источники, глоссарий, документы ОТ": "2E75B6",
+    "Прочие показатели": "7F7F7F",
+    "Точечные (1–2 строки)": "8064A2",
+    "Навигация": "595959",
+}
 
 FIRST_OT = {
     "Европейский союз": {
@@ -421,38 +543,51 @@ def collect_rows() -> list[list]:
     return rows
 
 
-def write_xlsx(rows: list[list]) -> Path:
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "СВОДНАЯ"
-
-    ws.merge_cells("A1:J1")
-    ws["A1"] = "Сводная таблица НИР: ЭДО, ЭДО в охране труда, судебная практика, правки ТК, сроки и ПДн"
-    ws["A1"].font = TITLE
-    ws.merge_cells("A2:J2")
-    ws["A2"] = (
-        "Одна таблица со всем содержимым справок. Включите автофильтр (уже включён). "
-        "Фильтр по столбцу «Блок» или «Юрисдикция / предмет». Кликом по столбцу «Проверить» открывается официальный источник. "
-        "Номера дел не вымышлены. Тип «аналогия» = нет дела именно об электронном журнале ОТ. Актуализация: август 2026."
+def sheet_title_for(indicator: str) -> str:
+    raw = SHEET_NAMES.get(indicator, indicator)
+    raw = (
+        str(raw)
+        .replace("\u2011", "-")
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("/", " и ")
+        .replace("\\", " ")
+        .replace("?", "")
+        .replace("*", "")
+        .replace("[", "(")
+        .replace("]", ")")
+        .replace(":", " ")
     )
-    ws["A2"].font = NOTE
-    ws["A2"].alignment = WRAP
-    ws.row_dimensions[1].height = 24
-    ws.row_dimensions[2].height = 42
+    raw = " ".join(raw.split())
+    return raw[:31]
 
-    header_row = 4
-    for c, h in enumerate(HEADERS, start=1):
-        cell = ws.cell(header_row, c, h)
+
+def unique_sheet_name(indicator: str, used: set[str]) -> str:
+    base = sheet_title_for(indicator) or "Лист"
+    name = base
+    n = 2
+    while name.lower() in {x.lower() for x in used}:
+        suffix = f"_{n}"
+        name = (base[: 31 - len(suffix)] + suffix)
+        n += 1
+    used.add(name)
+    return name
+
+
+def write_header_row(ws, row: int, headers: list[str]) -> None:
+    for c, h in enumerate(headers, start=1):
+        cell = ws.cell(row, c, h)
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = WRAP
         cell.border = THIN
-    ws.row_dimensions[header_row].height = 22
+    ws.row_dimensions[row].height = 22
 
-    for i, row in enumerate(rows, start=1):
-        r = header_row + i
-        values = [i, *row]
-        fill = FILLS.get(row[0])
+
+def write_data_rows(ws, start_row: int, numbered_rows: list[list], url_col: int) -> int:
+    r = start_row
+    for values in numbered_rows:
+        fill = FILLS.get(values[1]) if len(values) > 1 else None
         for c, val in enumerate(values, start=1):
             cell = ws.cell(r, c, val)
             cell.alignment = WRAP
@@ -460,31 +595,253 @@ def write_xlsx(rows: list[list]) -> Path:
             cell.font = BODY
             if fill and c <= 3:
                 cell.fill = fill
-            if c == 10 and isinstance(val, str) and val.startswith("http"):
+            if c == url_col and isinstance(val, str) and val.startswith("http"):
                 cell.hyperlink = val
                 cell.font = LINK
         ws.row_dimensions[r].height = 48
+        r += 1
+    return r - 1
 
-    last = header_row + len(rows)
-    ws.auto_filter.ref = f"A{header_row}:J{last}"
-    ws.freeze_panes = "C5"
-    widths = [6, 18, 28, 22, 28, 72, 48, 16, 36, 42]
+
+def finish_table(ws, header_row: int, last_row: int, n_cols: int, freeze: str, widths: list[int]) -> None:
+    last_col = get_column_letter(n_cols)
+    if last_row >= header_row:
+        ws.auto_filter.ref = f"A{header_row}:{last_col}{last_row}"
+    ws.freeze_panes = freeze
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.sheet_view.showGridLines = False
-    ws.auto_filter.ref = f"A{header_row}:J{last}"
+
+
+def write_table_sheet(
+    ws,
+    title: str,
+    note: str,
+    headers: list[str],
+    numbered_rows: list[list],
+    url_col: int,
+    freeze: str,
+    widths: list[int],
+) -> None:
+    n_cols = len(headers)
+    last_letter = get_column_letter(n_cols)
+    ws.merge_cells(f"A1:{last_letter}1")
+    ws["A1"] = title
+    ws["A1"].font = TITLE
+    ws.merge_cells(f"A2:{last_letter}2")
+    ws["A2"] = note
+    ws["A2"].font = NOTE
+    ws["A2"].alignment = WRAP
+    ws.row_dimensions[1].height = 24
+    ws.row_dimensions[2].height = 42
+    header_row = 4
+    write_header_row(ws, header_row, headers)
+    last = write_data_rows(ws, header_row + 1, numbered_rows, url_col)
+    finish_table(ws, header_row, last, n_cols, freeze, widths)
+
+
+def write_xlsx(rows: list[list]) -> Path:
+    by_ind: dict[str, list[list]] = defaultdict(list)
+    for row in rows:
+        by_ind[str(row[3] or "").strip() or "(пусто)"].append(row)
+
+    used_names: set[str] = {"Содержание", "Как_читать", "СВОДНАЯ", "Точечные показатели"}
+    own: list[str] = []
+    leftover: list[str] = []
+    seen = set()
+    for key in INDICATOR_ORDER + sorted(by_ind):
+        if key in seen or key not in by_ind:
+            continue
+        seen.add(key)
+        if len(by_ind[key]) >= MIN_OWN_SHEET:
+            own.append(key)
+        else:
+            leftover.append(key)
+
+    name_of: dict[str, str] = {}
+    for key in own:
+        name_of[key] = unique_sheet_name(key, used_names)
+
+    wb = Workbook()
+
+    toc = wb.active
+    toc.title = "Содержание"
+    toc.merge_cells("A1:E1")
+    toc["A1"] = "Сводная таблица НИР по листам графы «Показатель»"
+    toc["A1"].font = TITLE
+    toc.merge_cells("A2:E2")
+    toc["A2"] = (
+        "Каждый лист — одно значение графы «Показатель»: все страны и блоки сразу, без каши из обзоров, судов и источников. "
+        "Лист «СВОДНАЯ» в конце — все строки вместе, если нужен общий фильтр. "
+        "Кликом по имени листа открывается таблица. «Проверить» — официальный URL. "
+        "Тип «аналогия» = нет дела именно об электронном журнале ОТ. Актуализация: август 2026."
+    )
+    toc["A2"].font = NOTE
+    toc["A2"].alignment = WRAP
+    toc.row_dimensions[1].height = 24
+    toc.row_dimensions[2].height = 48
+    for c, h in enumerate(["Категория", "Лист", "Показатель", "Строк", "Что смотреть"], start=1):
+        cell = toc.cell(4, c, h)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = WRAP
+        cell.border = THIN
+    toc.freeze_panes = "A5"
+
+    toc_row = 5
+    placed = set()
+
+    def toc_line(category: str, sheet: str, indicator: str, n: int, hint: str) -> None:
+        nonlocal toc_row
+        vals = [category, sheet, indicator, n, hint]
+        for c, val in enumerate(vals, start=1):
+            cell = toc.cell(toc_row, c, val)
+            cell.alignment = WRAP
+            cell.border = THIN
+            cell.font = BODY
+            if c == 2:
+                cell.font = LINK
+                cell.hyperlink = XLHyperlink(
+                    ref=cell.coordinate,
+                    location=f"{quote_sheetname(sheet)}!A1",
+                    display=str(sheet),
+                )
+            if c == 1:
+                cell.fill = TOC_FILL
+        toc.row_dimensions[toc_row].height = 22
+        toc_row += 1
+
+    hints = {
+        "Основные акты": "Закон / директива / правило по стране",
+        "Юридическая сила": "Когда электронная запись равна бумаге",
+        "Модель подписи": "SES/AES/QES, ПЭП/УНЭП/УКЭП, ЭЦП",
+        "УЦ / доверие": "УЦ, QTSP, ДТС",
+        "Трансграничность": "Признание иностранной ЭП",
+        "Особенность модели": "Чем юрисдикция отличается",
+        "Акты ОТ": "Нормы охраны труда, не общий ЭДО",
+        "Можно ли e‑журнал / e‑учёт": "Да / нет / частично по стране",
+        "Подпись / форма": "Какая подпись на журнале и обучении",
+        "E‑журнал (кратко)": "Короткий статус e‑журнала",
+        "E‑обучение (кратко)": "Короткий статус e‑обучения",
+        "Особенность ОТ": "Национальная специфика ОТ",
+        "Обзор": "Сжатый текст справки",
+        "Особенность": "Отдельные черты режима",
+        "Сравнение с РФ": "Прямое сопоставление с 63‑ФЗ / 22.1 ТК",
+        "Что взять": "Что переносить в НИР / правку",
+        "Что не переносить": "Что не копировать в РФ",
+        "Значение для НИР": "Зачем карточка в главе 3",
+        "Тип карточки": "Прямая практика или аналогия",
+        "Суд": "Название суда",
+        "Цитата": "Номер дела — не вымышлен",
+        "Сюжет": "Одна строка о споре",
+        "Фабула": "Факты",
+        "Позиция суда": "Holding",
+        "Источник": "Официальные URL",
+        "Смысл": "Глоссарий терминов",
+        "За рубежом": "Как документ ОТ ведут за рубежом",
+        "РФ": "Как в России",
+        "РФ: можно ли электронно": "Матрица документов ОТ",
+        "Что проверяет суд / инспектор": "Реквизиты, не носитель",
+        "Синтез": "Сводные выводы",
+        "Горизонт": "Этапы внедрения",
+    }
+
+    toc_line("Навигация", "Как_читать", "—", 0, "Как пользоваться книгой")
+    toc_line("Навигация", "СВОДНАЯ", "все показатели", len(rows), "Все строки в одной таблице с автофильтром")
+
+    for cat, keys in INDICATOR_CATEGORIES:
+        for key in keys:
+            if key not in name_of:
+                continue
+            toc_line(cat, name_of[key], key, len(by_ind[key]), hints.get(key, "Строки с этим показателем"))
+            placed.add(key)
+    for key in own:
+        if key in placed:
+            continue
+        toc_line("Прочие показатели", name_of[key], key, len(by_ind[key]), hints.get(key, "Строки с этим показателем"))
+    for key in leftover:
+        toc_line(
+            "Точечные (1–2 строки)",
+            "Точечные показатели",
+            key,
+            len(by_ind[key]),
+            "Разовая строка: смотрите столбец «Показатель» на общем листе",
+        )
+
+    for i, w in enumerate([36, 28, 42, 10, 56], start=1):
+        toc.column_dimensions[get_column_letter(i)].width = w
+    toc.sheet_view.showGridLines = False
+
+    widths = [6, 18, 28, 22, 28, 72, 48, 16, 36, 42]
+    full_note = (
+        "Все строки справок в одном месте. Автофильтр по «Блок», «Юрисдикция / предмет», «Показатель». "
+        "Для чтения без каши откройте лист «Содержание» и нужный показатель. "
+        "Номера дел не вымышлены. Тип «аналогия» = нет дела именно об электронном журнале ОТ."
+    )
+
+    for key in own:
+        ws = wb.create_sheet(name_of[key])
+        numbered = [[i, *row] for i, row in enumerate(by_ind[key], start=1)]
+        write_table_sheet(
+            ws,
+            f"Показатель: {key}",
+            f"{len(by_ind[key])} строк. На листе только графа «{key}»: страны и блоки рядом, без смешения с другими показателями. "
+            "Столбец «Проверить» открывает официальный источник.",
+            HEADERS,
+            numbered,
+            url_col=10,
+            freeze="C5",
+            widths=widths,
+        )
+
+    if leftover:
+        ws = wb.create_sheet("Точечные показатели")
+        packed = []
+        i = 1
+        for key in leftover:
+            for row in by_ind[key]:
+                packed.append([i, *row])
+                i += 1
+        write_table_sheet(
+            ws,
+            "Точечные показатели (1–2 строки)",
+            "Сюда собраны разовые значения графы «Показатель»: письма Минтруда, Пленум, текст правки, 152‑ФЗ и т.п. "
+            "Имя показателя смотрите в столбце «Показатель».",
+            HEADERS,
+            packed,
+            url_col=10,
+            freeze="C5",
+            widths=widths,
+        )
+
+    ws_all = wb.create_sheet("СВОДНАЯ")
+    numbered_all = [[i, *row] for i, row in enumerate(rows, start=1)]
+    write_table_sheet(
+        ws_all,
+        "Сводная таблица НИР: ЭДО, ЭДО в охране труда, судебная практика, правки ТК, сроки и ПДн",
+        full_note,
+        HEADERS,
+        numbered_all,
+        url_col=10,
+        freeze="C5",
+        widths=widths,
+    )
 
     ws2 = wb.create_sheet("Как_читать")
     ws2["A1"] = "Как пользоваться сводной таблицей"
     ws2["A1"].font = TITLE
     guide = [
-        ("Лист «СВОДНАЯ»", "Это и есть единственная большая таблица. Все справки, суды, глоссарий, правки и сроки сведены в строки."),
+        ("Лист «Содержание»", "Оглавление. Имена листов = значения графы «Показатель». Клик по имени листа открывает таблицу."),
+        ("Листы показателей", "На каждом листе — только один показатель (например «Модель подписи» или «Что взять») по всем странам. Так сравнивать проще, чем в одной каше."),
+        ("«Точечные показатели»", "Разовые строки (Пленум, письма Минтруда, текст правки), у которых своё имя в графе «Показатель»."),
+        ("Лист «СВОДНАЯ»", "Все строки вместе, если нужен общий автофильтр по блоку или юрисдикции."),
         ("Фильтр «Блок»", "1-й комплект / 2-й комплект / РФ / Документы ОТ / Глоссарий / Практика РФ / Правка закона / Сроки и ПДн / Оси сравнения / Рекомендации / Международное."),
         ("Фильтр «Юрисдикция»", "Одна страна целиком: и ЭДО, и охрана труда, и судебные карточки."),
         ("Столбец «Проверить»", "Кликабельный URL официального закона или судебного решения."),
         ("Тип «аналогия»", "Нет опубликованного спора именно об электронном журнале ОТ. Карточка про содержание обучения / форму подписи."),
         ("Главный вывод", "РФ уникальна запретом КЭДО для журналов инструктажа и актов НС (ст. 22.1 ч. 3 ТК). Ближайший образец журнала — Беларусь, п. 35 Инструкции № 175. Протокол знания в РФ уже можно вести электронно (ПП 2464 п. 91–93)."),
-        ("Строк в таблице", str(len(rows))),
+        ("Строк всего", str(len(rows))),
+        ("Листов по показателям", str(len(own) + (1 if leftover else 0))),
     ]
     ws2["A3"] = "Вопрос"
     ws2["B3"] = "Ответ"
@@ -501,6 +858,23 @@ def write_xlsx(rows: list[list]) -> Path:
         ws2.row_dimensions[i].height = 40
     ws2.column_dimensions["A"].width = 28
     ws2.column_dimensions["B"].width = 110
+
+    tab_of = {
+        "Содержание": TAB_COLORS["Навигация"],
+        "Как_читать": TAB_COLORS["Навигация"],
+        "СВОДНАЯ": TAB_COLORS["Навигация"],
+        "Точечные показатели": TAB_COLORS["Точечные (1–2 строки)"],
+    }
+    for cat, keys in INDICATOR_CATEGORIES:
+        for key in keys:
+            if key in name_of:
+                tab_of[name_of[key]] = TAB_COLORS[cat]
+    for key in own:
+        tab_of.setdefault(name_of[key], TAB_COLORS["Прочие показатели"])
+    for sheet in wb.worksheets:
+        color = tab_of.get(sheet.title)
+        if color:
+            sheet.sheet_properties.tabColor = color
 
     wb.save(OUT)
     return OUT
