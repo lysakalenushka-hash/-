@@ -1,34 +1,35 @@
 #!/usr/bin/env python3
 """Build teacher PPTX for Topic 1 (organizational/legal aspects).
 
-Clones the sample deck style (1.1. Проведение занятий.pptx):
-title → recommendation slides → thanks.
-Content focuses on teaching emphasis points and common mistakes —
-not student study text.
+Style from sample «1.1. Проведение занятий.pptx».
+Images from Topic 1 source decks (НПА, аптечки, Порядок, алгоритм,
+безопасность, извлечение, вызов СМП).
+Slide notes = conversational voiceover (no bullet theses).
 """
 
 from __future__ import annotations
 
-import copy
 import shutil
 from pathlib import Path
 
-from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.oxml.ns import qn
-from pptx.util import Emu, Pt
 from lxml import etree
+from pptx import Presentation
+from pptx.enum.dml import MSO_FILL
+from pptx.oxml.ns import qn
+from pptx.util import Pt
 
 ROOT = Path(__file__).resolve().parent
 SAMPLE = ROOT / "assets" / "sample_style" / "template_1.1_provedenie_zanyatiy.pptx"
+ASSETS = ROOT / "assets" / "tema1_teaching"
 OUT = ROOT / "1.1_Organizatsionno-pravovye_aspekty_rekomendatsii.pptx"
+TXT = ROOT / "1.1_Organizatsionno-pravovye_aspekty_ozvuchka.txt"
 
-# Content slides: (title, attention bullets, error bullets, errors_label)
+# (title, attention, errors, errors_label, images, voiceover, txt_title)
 SLIDES = [
     (
         "ТЕМА 1. ОРГАНИЗАЦИОННО-ПРАВОВЫЕ АСПЕКТЫ",
         [
-            "Цель занятия: понятия, НПА, важность ПП, алгоритм и оснащение;",
+            "Цель: понятия, НПА, важность ПП, алгоритм и оснащение;",
             "Формат: интерактивная лекция (2 часа), диалог, а не монолог;",
             "Особый акцент — актуальное российское законодательство;",
             "Развеять миф о наказании за оказание первой помощи;",
@@ -40,6 +41,17 @@ SLIDES = [
             "Не зафиксировать понимание объёма ПП после разбора темы.",
         ],
         "Возможные ошибки при обучении:",
+        ["org_hero.png", "participants.png"],
+        """Начнём с темы организационно-правовых аспектов оказания первой помощи.
+Цель занятия — помочь слушателям уверенно ориентироваться в основных понятиях, в нормативной базе, понять важность первой помощи, а также увидеть общую последовательность действий и оснащение.
+Формат здесь лучше держать живым: интерактивная лекция примерно на два часа, с диалогом, а не с монотонным чтением статей.
+Главный акцент — актуальное российское законодательство.
+Именно на этом этапе нужно спокойно развеять миф о том, что за оказание первой помощи человека «обязательно накажут».
+К концу темы слушатели должны понимать и ценность первой помощи, и её законодательно установленный объём.
+Ошибка в обучении — свести всё к чтению закона без разбора страхов очевидцев.
+Вторая ошибка — не связать правовые нормы с тем, что реально делать на месте происшествия.
+Третья — закончить тему, так и не проверив, поняли ли слушатели рамки первой помощи.""",
+        "Слайд 2. Тема 1. Организационно-правовые аспекты",
     ),
     (
         "ВАЖНОСТЬ ПЕРВОЙ ПОМОЩИ",
@@ -56,6 +68,15 @@ SLIDES = [
             "Путать первую помощь со скорой медицинской помощью.",
         ],
         "Возможные ошибки слушателей:",
+        ["pp_concept.jpg", "five_components.jpeg"],
+        """Сразу стоит объяснить, почему эта тема вообще важна.
+Первая помощь — отдельный вид помощи, и она оказывается до медицинской помощи.
+По оценкам, около четверти погибших в дорожных авариях могли бы выжить, если бы им вовремя помогли.
+Критическое окно короткое: при остановке сердца речь идёт примерно о десяти минутах, а при сильном кровотечении — иногда о полутора–двух минутах.
+Поэтому главные барьеры очевидцев — страх «сделать хуже» и страх юридической ответственности — нужно разбирать прямо и спокойно.
+Первая помощь нужна пострадавшему, и при правильных действиях она также защищает того, кто помогает.
+Типичные ошибки слушателей здесь такие: надеяться, что скорая точно успеет; отказаться помогать из страха ответственности; и путать первую помощь со скорой медицинской помощью.""",
+        "Слайд 3. Важность первой помощи",
     ),
     (
         "ОРГАНИЗАЦИЯ СИСТЕМЫ ПЕРВОЙ ПОМОЩИ В РФ",
@@ -71,6 +92,14 @@ SLIDES = [
             "Забывать про передачу пострадавшего прибывшей бригаде СМП.",
         ],
         "Возможные ошибки слушателей:",
+        ["participants.png", "five_components.jpeg"],
+        """Дальше покажите, как устроена система первой помощи в России.
+Она держится на пяти компонентах: нормативном обеспечении, обучении, оснащении, мотивации и учёте эффективности.
+Участников удобно разделить на три категории: тех, кто обязан помогать; тех, кто может оказать само- или взаимопомощь; и тех, кто помогает добровольно.
+Особо подчеркните роль очевидцев: именно они часто начинают помощь до прибытия специалистов и до передачи пострадавшего бригаде скорой помощи.
+Даже без аптечки простые действия уже могут спасти жизнь.
+Ошибки слушателей обычно связаны с путаницей права и обязанности, с убеждением, что без аптечки «ничего нельзя делать», и с забыванием про передачу пострадавшего прибывшей бригаде.""",
+        "Слайд 4. Организация системы первой помощи в РФ",
     ),
     (
         "НОРМАТИВНО-ПРАВОВАЯ БАЗА (СТ. 31 323-ФЗ, ПРИКАЗ 220н)",
@@ -87,6 +116,15 @@ SLIDES = [
             "Подменять Порядок локальными инструкциями и памятками.",
         ],
         "Возможные ошибки слушателей:",
+        ["law_323.jpg", "order_220n.png"],
+        """Теперь перейдём к нормативной базе.
+Ключевой ориентир — статья 31 Федерального закона № 323-ФЗ и Порядок оказания первой помощи по приказу Минздрава № 220н.
+Важно прямо сказать: первая помощь оказывается по порядкам Минздрава, а не по правилам охраны труда, памяткам, старым программам или «личному опыту».
+В приказе № 220н закреплены девять состояний, девять мероприятий и их последовательность.
+С первого сентября 2024 года действует обновлённая редакция статьи 31.
+На занятии лучше показывать сами нормы и короткие цитаты — так материал звучит убедительнее.
+Типичные ошибки — опираться на устаревший приказ № 477н, учить объём помощи «по интернету» вне Порядка и подменять Порядок локальными инструкциями.""",
+        "Слайд 5. Нормативно-правовая база",
     ),
     (
         "ПРАВА, ОБЯЗАННОСТИ И ОТВЕТСТВЕННОСТЬ",
@@ -104,6 +142,16 @@ SLIDES = [
             "Считать медработников всегда обязанными оказывать именно ПП.",
         ],
         "Возможные ошибки слушателей:",
+        ["duty_categories.jpeg", "extreme_necessity.jpeg"],
+        """Отдельно разберите права, обязанности и ответственность.
+Для добровольного участника слово «вправе» означает право выбора, а не обязанность.
+Обязанность есть у тех, для кого она прямо закреплена нормативными актами: полиция, пожарные, спасатели и ряд других категорий.
+Водитель, причастный к ДТП с пострадавшими, тоже обязан принять меры к оказанию первой помощи.
+Медицинский работник во внерабочее время, как правило, имеет право оказывать первую помощь, но не всегда обязан именно в этом режиме.
+Если человек действует в рамках Порядка, ему помогает конструкция крайней необходимости, а само оказание помощи учитывается как смягчающее обстоятельство.
+Риск ответственности появляется прежде всего тогда, когда выходят за рамки разрешённых мероприятий.
+Ошибки слушателей здесь очень живучие: «за любую ошибку посадят»; путаница между обязанным лицом и добровольным очевидцем; и представление, будто медработник всегда обязан оказывать именно первую помощь.""",
+        "Слайд 6. Права, обязанности и ответственность",
     ),
     (
         "АПТЕЧКИ, УКЛАДКИ И ПОДРУЧНЫЕ СРЕДСТВА",
@@ -120,6 +168,15 @@ SLIDES = [
             "Не контролировать доступность и готовность аптечки.",
         ],
         "Возможные ошибки слушателей:",
+        ["kits_components.png", "kits_unify.png"],
+        """Переходим к оснащению.
+Самые распространённые аптечки — автомобильная по приказу № 260н, для работников по № 262н и для образовательных организаций по № 261н.
+Состав обязательный, и заменять компоненты «на своё усмотрение» нельзя.
+С 2024 года в комплектацию по утверждённым требованиям могут входить и лекарственные средства, но только в рамках соответствующих приказов.
+При этом подручные средства законом не запрещены.
+Аптечку нужно пополнять по мере расхода и по сроку годности, а также держать всегда доступной.
+Типичные ошибки слушателей — самовольная замена содержимого, использование медицинской маски вместо устройства для искусственного дыхания и отсутствие контроля готовности аптечки.""",
+        "Слайд 7. Аптечки, укладки и подручные средства",
     ),
     (
         "ПОРЯДОК 220н И УНИВЕРСАЛЬНЫЙ АЛГОРИТМ",
@@ -136,6 +193,15 @@ SLIDES = [
             "Делать проверку пульса обязательным шагом алгоритма.",
         ],
         "Возможные ошибки слушателей:",
+        ["states_list.png", "algorithm.png"],
+        """Теперь соберите материал в универсальный алгоритм по Порядку № 220н.
+Слушатели должны видеть не разрозненные приёмы, а последовательность Приложения № 2.
+Логика простая: сначала безопасность, затем угрожающее кровотечение, затем признаки жизни и, при необходимости, реанимация.
+Признаки жизни определяют по сознанию и дыханию; пульс в первой помощи не проверяют.
+Назначение лекарств в объём первой помощи не входит, но можно помочь пострадавшему принять препараты, которые ему уже назначил врач.
+Не забудьте про устное информирование о начале помощи и про выраженный отказ.
+Ошибки здесь частые: начинать «лечение» без оценки обстановки; давать чужие лекарства; и возвращать проверку пульса как обязательный шаг.""",
+        "Слайд 8. Порядок 220н и универсальный алгоритм",
     ),
     (
         "ОБЕСПЕЧЕНИЕ БЕЗОПАСНЫХ УСЛОВИЙ",
@@ -152,6 +218,15 @@ SLIDES = [
             "Игнорировать информирование окружающих о начале оказания ПП.",
         ],
         "Возможные ошибки слушателей:",
+        ["safety.png", "cancel_old.jpeg"],
+        """Перед любыми действиями — безопасность.
+По пункту 4 Порядка собственная безопасность оказывающего помощь является условием оказания первой помощи.
+Разберите типичные угрозы: электрический ток, интенсивное движение, пожар или взрыв, токсичные вещества, агрессия, риск обрушения.
+Сначала снижают опасность, и только потом помогают.
+Параллельно нужно обезопасить самого пострадавшего и прекратить действие повреждающих факторов.
+Если угроза сохраняется, правильный шаг — вызов спецслужб, а не героизм любой ценой.
+Типичные ошибки — забыть про опасный фактор, броситься к пострадавшему и стать вторым пострадавшим, а также не сообщить окружающим, что сейчас будет оказываться первая помощь.""",
+        "Слайд 9. Обеспечение безопасных условий",
     ),
     (
         "ПРОФИЛАКТИКА ИНФЕКЦИОННЫХ ЗАБОЛЕВАНИЙ",
@@ -167,6 +242,14 @@ SLIDES = [
             "Игнорировать контакт с кровью и другими биожидкостями.",
         ],
         "Возможные ошибки слушателей:",
+        ["infection.png", "kits_rules.jpeg"],
+        """Рядом с безопасностью места всегда идёт профилактика инфекций.
+Для снижения риска заражения используют медицинские перчатки и устройство «Рот–Устройство–Рот».
+Маска из аптечки нужна для защиты того, кто оказывает помощь, и не предназначена для искусственного дыхания.
+Если кровь или другие биологические жидкости попали на кожу, их сразу смывают, руки тщательно моют.
+После проведения искусственного дыхания рот рекомендуется прополоскать.
+Ошибки слушателей здесь простые, но устойчивые: пренебрежение защитой, путаница между маской и устройством для ИВЛ и равнодушие к контакту с биожидкостями.""",
+        "Слайд 10. Профилактика инфекционных заболеваний",
     ),
     (
         "ИЗВЛЕЧЕНИЕ И ПЕРЕМЕЩЕНИЕ ПОСТРАДАВШИХ",
@@ -183,6 +266,16 @@ SLIDES = [
             "Выбирать травмоопасный способ переноски «для скорости».",
         ],
         "Возможные ошибки слушателей:",
+        ["extract_conscious.jpg", "extract_unconscious.jpg"],
+        """Отдельный большой блок — извлечение и перемещение.
+Экстренное извлечение нужно только тогда, когда пострадавшему угрожает опасность или помочь на месте невозможно.
+Перед извлечением из автомобиля включают стояночный тормоз и выключают зажигание.
+Если человек в сознании, часто используют приём Раутека.
+Если он без сознания или есть подозрение на травму шейного отдела позвоночника, голову и шею обязательно фиксируют.
+Способ дальнейшего перемещения выбирают по состоянию пострадавшего, характеру травм, числу участников и их силам.
+А если пострадавших несколько, приоритет отдают наиболее тяжёлым и детям.
+Ошибки здесь опасны: извлекать «на всякий случай», не фиксировать голову и шею при подозрении на травму позвоночника и выбирать травмоопасный способ только ради скорости.""",
+        "Слайд 11. Извлечение и перемещение пострадавших",
     ),
     (
         "ВЫЗОВ СКОРОЙ МЕДИЦИНСКОЙ ПОМОЩИ",
@@ -199,6 +292,15 @@ SLIDES = [
             "Положить трубку до подтверждения, что вызов принят.",
         ],
         "Возможные ошибки слушателей:",
+        ["call_112.jpg", "call_info.jpeg"],
+        """Завершая практическую логику темы, разберите вызов скорой помощи.
+Единый номер экстренных служб — 112; скорую также вызывают по 103 и региональным номерам.
+Диспетчеру нужно коротко и точно сказать: где это произошло и что случилось; сколько пострадавших; какие у них повреждения и насколько тяжело состояние; какая помощь уже оказывается.
+Вызов удобнее делать после короткой оценки состояния — так информация получается точнее.
+Трубку не кладут первыми: ждут подтверждения, что вызов принят.
+И помните: диспетчер может подсказывать, что делать дальше, и этим нужно пользоваться.
+Типичные ошибки — забыть вызвать скорую, не сообщить число пострадавших и характер повреждений, положить трубку слишком рано.""",
+        "Слайд 12. Вызов скорой медицинской помощи",
     ),
     (
         "ТИПИЧНЫЕ ОШИБКИ ПРИ ОБУЧЕНИИ ТЕМЕ",
@@ -216,93 +318,88 @@ SLIDES = [
             "Пропускать безопасность, инфекцию и вызов СМП как «очевидное».",
         ],
         "Возможные ошибки при обучении:",
+        ["priority.png", "dutch_bridge.jpg"],
+        """В конце соберите методические акценты для вас как для преподавателей.
+Держите фокус на актуальных нормативных актах и коротких цитатах.
+Страхи слушателей — «сделаю хуже» и «посадят» — разбирайте в диалоге, а не отмахивайтесь от них.
+Связывайте право, алгоритм, оснащение и вызов скорой в одну понятную цепочку.
+Закрепляйте тему контрольными вопросами из пособия.
+И в финале подчеркните простую мысль: первая помощь доступна, законна и спасает жизни.
+Ошибки в обучении тоже стоит заранее видеть.
+Не уходите в юридический ликбез без практики.
+Не пугайте ответственностью вместо того, чтобы снять ложный страх.
+Не давайте устаревшие перечни состояний и мероприятий.
+И не пропускайте безопасность, профилактику инфекций и вызов скорой как будто это и так всем очевидно.""",
+        "Слайд 13. Типичные ошибки при обучении теме",
     ),
 ]
 
+TITLE_VOICE = """Добро пожаловать на занятие по подготовке преподавателей первой помощи.
+Сегодня мы разберём организационно-правовые аспекты оказания первой помощи — не как текст для заучивания, а как то, на что важно опираться, когда вы сами будете вести эту тему.
+Мы посмотрим, какие акценты держать, какие типичные ошибки встречаются у слушателей и при проведении обучения, и как связать закон с реальными действиями на месте происшествия."""
 
-def _set_run_text(run, text: str) -> None:
-    run.text = text
+THANKS_VOICE = """На этом разбор организационно-правовых аспектов для преподавателей завершён.
+Спасибо за внимание, и удачи вам в проведении занятий."""
 
 
 def _clear_paragraphs_keep_first(tf):
-    """Remove extra paragraphs from a text frame, keep first empty."""
     p0 = tf.paragraphs[0]
     for r in list(p0.runs):
         r.text = ""
-    # remove additional paragraphs via XML
-    p_elements = tf._txBody.findall(qn("a:p"))
-    for pe in p_elements[1:]:
+    for pe in tf._txBody.findall(qn("a:p"))[1:]:
         tf._txBody.remove(pe)
 
 
-def _add_paragraph(tf, text: str, *, bold: bool = False, size_pt: float = 18, space_before_pt: float = 0):
+def _force_font(run, name: str = "Open Sans Light"):
+    run.font.name = name
+    rPr = run._r.get_or_add_rPr()
+    for tag in ("a:latin", "a:ea", "a:cs"):
+        el = rPr.find(qn(tag))
+        if el is None:
+            el = etree.SubElement(rPr, qn(tag))
+        el.set("typeface", name)
+
+
+def _add_paragraph(tf, text: str, *, bold: bool = False, size_pt: float = 17, space_before_pt: float = 0):
     p = tf.add_paragraph()
     p.level = 0
     if space_before_pt:
         p.space_before = Pt(space_before_pt)
     run = p.add_run()
     run.text = text
-    run.font.name = "Open Sans Light"
     run.font.size = Pt(size_pt)
     run.font.bold = bold
-    # Force latin/ea fonts via XML for consistent look
-    rPr = run._r.get_or_add_rPr()
-    for tag, typeface in (
-        ("a:latin", "Open Sans Light"),
-        ("a:ea", "Open Sans Light"),
-        ("a:cs", "Open Sans Light"),
-    ):
-        el = rPr.find(qn(tag))
-        if el is None:
-            el = etree.SubElement(rPr, qn(tag))
-        el.set("typeface", typeface)
+    _force_font(run)
     return p
 
 
-def _fill_content_textbox(
-    shape,
-    title: str,
-    attention: list[str],
-    errors: list[str] | None,
-    errors_label: str = "Возможные ошибки слушателей:",
-):
+def _fill_content_textbox(shape, title: str, attention: list[str], errors: list[str] | None, errors_label: str):
     tf = shape.text_frame
     tf.word_wrap = True
     _clear_paragraphs_keep_first(tf)
 
-    # Use first paragraph for title
     p0 = tf.paragraphs[0]
-    if not p0.runs:
-        run = p0.add_run()
-    else:
-        run = p0.runs[0]
-        for extra in p0.runs[1:]:
-            extra.text = ""
+    run = p0.runs[0] if p0.runs else p0.add_run()
+    for extra in p0.runs[1:]:
+        extra.text = ""
     run.text = title
-    run.font.name = "Open Sans Light"
-    run.font.size = Pt(18)
+    run.font.size = Pt(17)
     run.font.bold = True
-    rPr = run._r.get_or_add_rPr()
-    for tag in ("a:latin", "a:ea", "a:cs"):
-        el = rPr.find(qn(tag))
-        if el is None:
-            el = etree.SubElement(rPr, qn(tag))
-        el.set("typeface", "Open Sans Light")
+    _force_font(run)
 
-    _add_paragraph(tf, "", bold=False, size_pt=18)
-    _add_paragraph(tf, "Важно заострить внимание:", bold=True, size_pt=18)
+    _add_paragraph(tf, "")
+    _add_paragraph(tf, "Важно заострить внимание:", bold=True)
     for item in attention:
-        _add_paragraph(tf, item, bold=False, size_pt=18, space_before_pt=2.8)
+        _add_paragraph(tf, item, space_before_pt=2.4)
 
     if errors:
-        _add_paragraph(tf, "", bold=False, size_pt=18)
-        _add_paragraph(tf, errors_label, bold=True, size_pt=18)
+        _add_paragraph(tf, "")
+        _add_paragraph(tf, errors_label, bold=True)
         for item in errors:
-            _add_paragraph(tf, item, bold=False, size_pt=18, space_before_pt=2.8)
+            _add_paragraph(tf, item, space_before_pt=2.4)
 
 
 def _find_content_textbox(slide):
-    """Largest text box that is not the header."""
     candidates = []
     for shape in slide.shapes:
         if not shape.has_text_frame:
@@ -313,23 +410,37 @@ def _find_content_textbox(slide):
         if shape.name and "Номер" in shape.name:
             continue
         candidates.append(shape)
-    if not candidates:
-        return None
-    # Prefer name object 7 / largest area
     for shape in candidates:
         if shape.name == "object 7":
             return shape
-    return max(candidates, key=lambda s: s.width * s.height)
+    return max(candidates, key=lambda s: s.width * s.height) if candidates else None
+
+
+def _picture_fill_shapes(slide):
+    out = []
+    for shape in slide.shapes:
+        try:
+            if shape.fill.type == MSO_FILL.PICTURE:
+                out.append(shape)
+        except Exception:
+            continue
+    out.sort(key=lambda s: s.width * s.height, reverse=True)
+    return out
+
+
+def _set_picture_fill(slide, shape, image_path: Path):
+    if not image_path.exists():
+        raise FileNotFoundError(image_path)
+    _part, rId = slide.part.get_or_add_image_part(str(image_path))
+    for blip in shape._element.findall(".//" + qn("a:blip")):
+        blip.set(qn("r:embed"), rId)
 
 
 def _set_notes(slide, text: str):
-    notes = slide.notes_slide
-    tf = notes.notes_text_frame
-    tf.text = text
+    slide.notes_slide.notes_text_frame.text = text.strip()
 
 
 def _delete_slide(prs: Presentation, index: int):
-    """Delete slide at index (0-based)."""
     sldIdLst = prs.slides._sldIdLst
     sldId = sldIdLst[index]
     rId = sldId.get(qn("r:id"))
@@ -337,64 +448,59 @@ def _delete_slide(prs: Presentation, index: int):
     sldIdLst.remove(sldId)
 
 
+def write_txt(scripts: list[tuple[str, str]]) -> None:
+    blocks = [f"{title}\n\n{text.strip()}\n" for title, text in scripts]
+    TXT.write_text("\n" + ("-" * 60 + "\n\n").join(blocks), encoding="utf-8")
+
+
 def build() -> Path:
     if not SAMPLE.exists():
-        raise FileNotFoundError(f"Sample PPTX not found: {SAMPLE}")
-
+        raise FileNotFoundError(SAMPLE)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(SAMPLE, OUT)
     prs = Presentation(str(OUT))
 
-    # Slide 1 title — keep visual; update notes
-    _set_notes(
-        prs.slides[0],
-        "Тема 1. Организационно-правовые аспекты оказания первой помощи\n"
-        "Презентация для преподавателей: на что обратить внимание и типичные ошибки.",
-    )
+    _set_notes(prs.slides[0], TITLE_VOICE)
 
-    # Content slides in sample: indices 1..15 (slides 2–16), thanks is last (16)
-    # We need: title + len(SLIDES) content + thanks
     content_count = len(SLIDES)
-    # Sample has 15 content-ish slides (2-16) then thanks (17) = indices 1..15 content, 16 thanks
-    # We'll rewrite first content_count slides (1..content_count) and delete extras before thanks
-
     thanks_index = len(prs.slides) - 1
-
-    # Ensure we have enough content slots between title and thanks
-    available = thanks_index - 1  # slides strictly between title and thanks
+    available = thanks_index - 1
     if content_count > available:
-        raise RuntimeError(
-            f"Need {content_count} content slides, sample has only {available}"
-        )
+        raise RuntimeError(f"Need {content_count} content slides, sample has {available}")
 
-    for i, (title, attention, errors, errors_label) in enumerate(SLIDES):
+    txt_scripts: list[tuple[str, str]] = [
+        ("Слайд 1. Титул", TITLE_VOICE),
+    ]
+
+    for i, (title, attention, errors, errors_label, images, voice, txt_title) in enumerate(SLIDES):
         slide = prs.slides[1 + i]
         box = _find_content_textbox(slide)
         if box is None:
             raise RuntimeError(f"No content textbox on slide {i + 2}")
         _fill_content_textbox(box, title, attention, errors, errors_label)
-        _set_notes(
-            slide,
-            f"{title}\n\nВажно:\n- "
-            + "\n- ".join(attention)
-            + (
-                (f"\n\n{errors_label}\n- " + "\n- ".join(errors)) if errors else ""
-            ),
-        )
 
-    # Delete unused content slides between last used content and thanks (from the end)
-    # After rewrite, unused indices are: 1+content_count .. thanks_index-1
+        pic_shapes = _picture_fill_shapes(slide)
+        for j, img_name in enumerate(images):
+            if j >= len(pic_shapes):
+                break
+            _set_picture_fill(slide, pic_shapes[j], ASSETS / img_name)
+
+        _set_notes(slide, voice)
+        txt_scripts.append((txt_title, voice))
+
     for idx in range(thanks_index - 1, content_count, -1):
         _delete_slide(prs, idx)
 
-    # Update thanks notes
     thanks = prs.slides[len(prs.slides) - 1]
-    _set_notes(thanks, "Благодарим за внимание")
+    _set_notes(thanks, THANKS_VOICE)
+    txt_scripts.append(("Слайд 14. Благодарим за внимание", THANKS_VOICE))
 
     prs.save(str(OUT))
+    write_txt(txt_scripts)
     return OUT
 
 
 if __name__ == "__main__":
     path = build()
     print(f"Wrote {path}")
+    print(f"Wrote {TXT}")
