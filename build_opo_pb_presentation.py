@@ -1,353 +1,158 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Переработка «Общие положения ПБ на ОПО.pptx» в красный стиль (как Б.7.5 / котлы)."""
+"""Красный стиль текста и оформления — все картинки и макет сохраняются."""
 
 from __future__ import annotations
 
-import re
+import shutil
 from pathlib import Path
 
 from pptx import Presentation
-from pptx.dml.color import RGBColor as PptxRGB
-from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
-from pptx.util import Emu, Pt as PptxPt
+from pptx.dml.color import RGBColor
+from pptx.enum.dml import MSO_COLOR_TYPE
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 SOURCE = Path("Общие_положения_ПБ_на_ОПО_исходник.pptx")
-TEMPLATE = Path("/tmp/red_style_sample.pptx")
 OUTPUT = Path("Общие_положения_ПБ_на_ОПО.pptx")
 
-RED = PptxRGB(0xE3, 0x06, 0x13)
-GRAY = PptxRGB(0x6B, 0x72, 0x80)
-DARK = PptxRGB(0x1A, 0x1A, 0x1A)
-WHITE = PptxRGB(0xFF, 0xFF, 0xFF)
-CREAM = PptxRGB(0xFE, 0xF3, 0xC7)
-AMBER = PptxRGB(0xF5, 0x9E, 0x0B)
-LIGHT_BG = PptxRGB(0xFA, 0xFA, 0xFA)
-
-SLIDE_W = Emu(12192000)
-SLIDE_H = Emu(6858000)
-MARGIN_L = Emu(640080)
-CONTENT_W = Emu(10911535)
+# Палитра как в материалах Б.7.5 / котлы
+RED = RGBColor(0xE3, 0x06, 0x13)
+GRAY = RGBColor(0x6B, 0x72, 0x80)
+DARK = RGBColor(0x1A, 0x1A, 0x1A)
+CREAM = RGBColor(0xFE, 0xF3, 0xC7)
+LIGHT_BG = RGBColor(0xFA, 0xFA, 0xFA)
 FONT = "Inter"
 
-# Текст слайда 16 был только в изображении — восстанавливаем по 116-ФЗ
-SLIDE_16_ITEMS = [
-    "Немедленно информировать федеральный орган исполнительной власти в области "
-    "промышленной безопасности и иные органы о каждой аварии на ОПО.",
-    "Принимать меры по локализации и ликвидации последствий аварии.",
-    "Оказывать содействие государственным органам в расследовании причин аварии.",
-    "Принимать меры по устранению причин аварии и профилактике подобных аварий.",
-    "Не допускать сокрытия информации об авариях и инцидентах на ОПО.",
-]
+# Исходные цвета текста в презентации
+OLD_TITLE_RED = RGBColor(0xFF, 0x00, 0x00)
+OLD_HEAD = RGBColor(0x2E, 0x3C, 0x4E)
+OLD_BODY = RGBColor(0x38, 0x46, 0x53)
+OLD_BLACK = RGBColor(0x00, 0x00, 0x00)
 
-SLIDE_6_ITEMS = [
-    "Проектирование, изготовление, монтаж, наладка, обслуживание, ремонт, "
-    "консервация и ликвидация технических устройств, применяемых на ОПО.",
-    "Эксплуатация опасных производственных объектов.",
-    "Проведение экспертизы промышленной безопасности.",
-    "Подготовка и аттестация работников в области промышленной безопасности.",
-    "Разработка декларации промышленной безопасности и обоснования безопасности ОПО.",
-]
+# Заливки карточек в исходнике
+OLD_CARD_BLUE = RGBColor(0xD9, 0xED, 0xF2)
+OLD_CARD_CREAM = RGBColor(0xFA, 0xF9, 0xF5)
+
+TITLE_SIZES = {304800, 285750, 266700}
+HEADER_SIZE = 152400
+NUMBER_SIZES = {190500, 184150, 171450}
 
 
-def set_run_font(run, size=14, bold=False, color=DARK, name=FONT):
-    run.font.name = name
-    run.font.size = PptxPt(size)
-    run.font.bold = bold
-    run.font.color.rgb = color
+def rgb_eq(a: RGBColor, b: RGBColor) -> bool:
+    return str(a) == str(b)
 
 
-def add_textbox(slide, left, top, width, height, text="", size=14, bold=False, color=DARK, align=PP_ALIGN.LEFT):
-    box = slide.shapes.add_textbox(left, top, width, height)
-    tf = box.text_frame
-    tf.word_wrap = True
-    tf.vertical_anchor = MSO_ANCHOR.TOP
-    p = tf.paragraphs[0]
-    p.alignment = align
-    run = p.add_run()
-    run.text = text
-    set_run_font(run, size=size, bold=bold, color=color)
-    return box
+def get_run_rgb(run) -> RGBColor | None:
+    try:
+        if run.font.color.type == MSO_COLOR_TYPE.RGB:
+            return run.font.color.rgb
+    except AttributeError:
+        pass
+    return None
 
 
-def add_bg(slide, color=LIGHT_BG):
-    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, SLIDE_W, SLIDE_H)
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = color
-    shape.line.fill.background()
-    sp = shape._element
-    slide.shapes._spTree.remove(sp)
-    slide.shapes._spTree.insert(2, sp)
+def style_run(run):
+    size = int(run.font.size) if run.font.size else 0
+    rgb = get_run_rgb(run)
+    text = run.text.strip()
+
+    run.font.name = FONT
+
+    # Заголовки слайдов (крупный красный или тёмный в исходнике)
+    if size in TITLE_SIZES or (size >= 260000 and run.font.bold):
+        run.font.bold = True
+        run.font.color.rgb = RED
+        return
+
+    # Номера блоков / пунктов
+    if size in NUMBER_SIZES or (size == HEADER_SIZE and text.isdigit()):
+        run.font.bold = True
+        run.font.color.rgb = RED
+        return
+
+    # Подзаголовки карточек и секций
+    if size == HEADER_SIZE or rgb_eq(rgb, OLD_HEAD) if rgb else False:
+        run.font.bold = True
+        run.font.color.rgb = RED
+        return
+
+    # Основной текст
+    if size <= 127000 or rgb_eq(rgb, OLD_BODY) if rgb else True:
+        run.font.color.rgb = GRAY
+        return
+
+    # Прочее
+    if rgb_eq(rgb, OLD_BLACK) if rgb else False:
+        run.font.color.rgb = DARK
+        return
+
+    run.font.color.rgb = GRAY
 
 
-def add_accent_bar(slide, top=Emu(6355080)):
-    bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, MARGIN_L, top, CONTENT_W, Emu(91440))
-    bar.fill.solid()
-    bar.fill.fore_color.rgb = RED
-    bar.line.fill.background()
+def style_text_frame(text_frame):
+    for paragraph in text_frame.paragraphs:
+        for run in paragraph.runs:
+            if run.text:
+                style_run(run)
 
 
-def add_page_num(slide, num, total):
-    add_textbox(
-        slide,
-        Emu(10180015),
-        Emu(6492240),
-        Emu(1188720),
-        Emu(228600),
-        f"{num:02d} / {total:02d}",
-        size=11,
-        color=GRAY,
-        align=PP_ALIGN.RIGHT,
-    )
+def get_shape_fill_rgb(shape) -> RGBColor | None:
+    try:
+        fill = shape.fill
+        # MSO_FILL.SOLID = 1
+        if fill.type != 1:
+            return None
+        fc = fill.fore_color
+        if fc.type == MSO_COLOR_TYPE.RGB:
+            return fc.rgb
+    except (AttributeError, TypeError):
+        pass
+    return None
 
 
-def add_title_slide(prs, title, subtitle, tags, page, total):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bg(slide)
-    oval = slide.shapes.add_shape(MSO_SHAPE.OVAL, Emu(9753600), Emu(-457200), Emu(2743200), Emu(2743200))
-    oval.fill.solid()
-    oval.fill.fore_color.rgb = CREAM
-    oval.line.fill.background()
-    add_textbox(slide, MARGIN_L, Emu(731520), Emu(4572000), Emu(228600), "КУРС", size=12, bold=True, color=RED)
-    add_textbox(slide, MARGIN_L, Emu(1188720), CONTENT_W, Emu(640080), title, size=28, bold=True, color=DARK)
-    add_textbox(slide, MARGIN_L, Emu(2103120), CONTENT_W, Emu(914400), subtitle, size=18, color=GRAY)
-    add_textbox(slide, MARGIN_L, Emu(3200400), CONTENT_W, Emu(457200), "116-ФЗ · Промышленная безопасность · ОПО", size=14, color=GRAY)
-    add_accent_bar(slide)
-    add_textbox(slide, MARGIN_L, Emu(5486400), CONTENT_W, Emu(365760), tags, size=12, color=GRAY)
-    add_page_num(slide, page, total)
+def style_shape_fill(shape):
+    if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+        return
+    rgb = get_shape_fill_rgb(shape)
+    if rgb is None:
+        return
+    if rgb_eq(rgb, OLD_CARD_BLUE):
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = CREAM
+    elif rgb_eq(rgb, OLD_CARD_CREAM):
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = LIGHT_BG
 
 
-def add_items_slide(prs, title, items, page, total, subtitle=None):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bg(slide)
-    add_textbox(slide, MARGIN_L, Emu(731520), CONTENT_W, Emu(640080), title, size=24, bold=True, color=DARK)
-    y = Emu(1463040) if subtitle else Emu(1650720)
-    if subtitle:
-        add_textbox(slide, MARGIN_L, Emu(1463040), CONTENT_W, Emu(365760), subtitle, size=14, color=GRAY)
-        y = Emu(1920240)
-    max_items = 6
-    shown = items[:max_items]
-    step = Emu(780000) if len(shown) > 4 else Emu(960000)
-    for i, item in enumerate(shown, 1):
-        add_textbox(slide, MARGIN_L, y, Emu(640080), Emu(365760), f"{i:02d}", size=14, bold=True, color=RED)
-        add_textbox(slide, Emu(1371600), y, Emu(9539980), Emu(720000), item, size=13, color=GRAY)
-        y += step
-    if len(items) > max_items:
-        add_textbox(
-            slide,
-            MARGIN_L,
-            Emu(6120000),
-            CONTENT_W,
-            Emu(228600),
-            f"(+ ещё {len(items) - max_items} положений на исходном слайде)",
-            size=11,
-            color=GRAY,
-        )
-    add_accent_bar(slide)
-    add_page_num(slide, page, total)
-
-
-def add_detail_slide(prs, title, section, body, note, page, total, subtitle=None):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bg(slide)
-    add_textbox(slide, MARGIN_L, Emu(731520), CONTENT_W, Emu(640080), title, size=24, bold=True, color=DARK)
-    top = Emu(1463040)
-    if subtitle:
-        add_textbox(slide, MARGIN_L, top, CONTENT_W, Emu(365760), subtitle, size=16, color=GRAY)
-        top = Emu(1920240)
-    add_textbox(slide, MARGIN_L, top, Emu(3200400), Emu(365760), section, size=14, bold=True, color=RED)
-    add_textbox(slide, MARGIN_L, top + Emu(457200), CONTENT_W, Emu(2103120), body, size=13, color=GRAY)
-    if note:
-        add_textbox(slide, MARGIN_L, Emu(4754880), CONTENT_W, Emu(914400), note, size=12, color=AMBER)
-    add_accent_bar(slide)
-    add_page_num(slide, page, total)
-
-
-def add_summary_slide(prs, items, page, total, closing=None):
-    slide = prs.slides.add_slide(prs.slide_layouts[6])
-    add_bg(slide)
-    add_textbox(slide, MARGIN_L, Emu(731520), Emu(4572000), Emu(228600), "Итоги", size=14, bold=True, color=RED)
-    add_textbox(
-        slide,
-        MARGIN_L,
-        Emu(1005840),
-        CONTENT_W,
-        Emu(640080),
-        "Ключевые выводы",
-        size=22,
-        bold=True,
-        color=DARK,
-    )
-    y = Emu(2103120)
-    for title, body in items:
-        add_textbox(slide, MARGIN_L, y, Emu(3200400), Emu(365760), title, size=13, bold=True, color=RED)
-        add_textbox(slide, Emu(3840480), y, Emu(7711135), Emu(640080), body, size=12, color=GRAY)
-        y += Emu(960000)
-    if closing:
-        add_textbox(slide, MARGIN_L, Emu(5486400), CONTENT_W, Emu(548640), closing, size=12, color=GRAY)
-    add_accent_bar(slide)
-    add_page_num(slide, page, total)
-
-
-def extract_blocks(slide):
-    blocks = []
-    for shape in slide.shapes:
-        if shape.has_text_frame:
-            text = shape.text_frame.text.strip()
-            if text:
-                blocks.append(re.sub(r"\x0b", " ", text))
-    return blocks
-
-
-def is_number(s: str) -> bool:
-    return s.strip().isdigit()
-
-
-def parse_pairs(blocks):
-    """Парсинг блоков вида «заголовок — описание» или «01 / заголовок / текст»."""
-    items = []
-    i = 0
-    while i < len(blocks):
-        b = blocks[i]
-        if is_number(b) and i + 2 < len(blocks) and not is_number(blocks[i + 1]):
-            label = blocks[i + 1]
-            desc = blocks[i + 2]
-            items.append(f"{label}: {desc}")
-            i += 3
-        elif is_number(b) and i + 1 < len(blocks):
-            items.append(f"{blocks[i + 1]}")
-            i += 2
-        elif i + 1 < len(blocks) and len(b) < 55 and len(blocks[i + 1]) > len(b) + 10:
-            items.append(f"{b} — {blocks[i + 1]}")
-            i += 2
-        else:
-            for line in b.split("\n"):
-                line = line.strip()
-                if line and line not in items:
-                    items.append(line)
-            i += 1
-    return items
-
-
-def slide_to_spec(blocks, slide_num: int) -> dict:
-    if not blocks:
-        return {"type": "items", "title": f"Слайд {slide_num}", "items": []}
-
-    if slide_num == 1:
-        return {
-            "type": "title",
-            "title": blocks[0],
-            "subtitle": blocks[1] if len(blocks) > 1 else "",
-            "tags": "116-ФЗ · ОПО · Промышленная безопасность · Аттестация",
-        }
-
-    if blocks[0] == "Ключевые выводы":
-        pairs = []
-        rest = blocks[1:]
-        i = 0
-        while i < len(rest):
-            if is_number(rest[i]) and i + 2 < len(rest):
-                pairs.append((rest[i + 1], rest[i + 2]))
-                i += 3
-            else:
-                i += 1
-        return {
-            "type": "summary",
-            "items": pairs,
-            "closing": "Соблюдение требований ФЗ № 116-ФЗ — основа безопасной эксплуатации ОПО.",
-        }
-
-    title = blocks[0]
-    rest = blocks[1:]
-
-    if slide_num == 6:
-        return {"type": "items", "title": title, "items": SLIDE_6_ITEMS, "subtitle": rest[0] if rest else None}
-
-    if slide_num == 16:
-        return {"type": "items", "title": title, "items": SLIDE_16_ITEMS}
-
-    if slide_num == 28 and len(rest) == 1:
-        return {
-            "type": "detail",
-            "title": title,
-            "section": "Сущность технического перевооружения",
-            "body": rest[0],
-            "note": "При техническом перевооружении может потребоваться обновление обоснования безопасности ОПО "
-            "и экспертиза промышленной безопасности.",
-        }
-
-    items = parse_pairs(rest)
-
-    # Один длинный абзац — detail
-    if len(items) == 1 and len(items[0]) > 180:
-        return {
-            "type": "detail",
-            "title": title,
-            "section": "Основные положения",
-            "body": items[0],
-            "note": "",
-        }
-
-    if len(items) >= 2:
-        return {"type": "items", "title": title, "items": items}
-
-    body = rest[0] if rest else ""
-    return {
-        "type": "detail",
-        "title": title,
-        "section": "Основные положения",
-        "body": body,
-        "note": "",
-    }
+def apply_red_style(prs: Presentation):
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                continue
+            style_shape_fill(shape)
+            if shape.has_text_frame:
+                style_text_frame(shape.text_frame)
 
 
 def build():
     if not SOURCE.exists():
-        raise FileNotFoundError(SOURCE)
-    if not TEMPLATE.exists():
-        raise FileNotFoundError(TEMPLATE)
-
-    src = Presentation(str(SOURCE))
-    specs = []
-    for i, slide in enumerate(src.slides, 1):
-        specs.append(slide_to_spec(extract_blocks(slide), i))
-
-    prs = Presentation(str(TEMPLATE))
-    while len(prs.slides) > 0:
-        r_id = prs.slides._sldIdLst[0].rId
-        prs.part.drop_rel(r_id)
-        del prs.slides._sldIdLst[0]
-
-    total = len(specs)
-    for page, spec in enumerate(specs, 1):
-        t = spec["type"]
-        if t == "title":
-            add_title_slide(prs, spec["title"], spec["subtitle"], spec["tags"], page, total)
-        elif t == "summary":
-            add_summary_slide(prs, spec["items"], page, total, spec.get("closing"))
-        elif t == "detail":
-            add_detail_slide(
-                prs,
-                spec["title"],
-                spec["section"],
-                spec["body"],
-                spec.get("note", ""),
-                page,
-                total,
-            )
-        else:
-            add_items_slide(
-                prs,
-                spec["title"],
-                spec["items"],
-                page,
-                total,
-                spec.get("subtitle"),
-            )
-
+        raise FileNotFoundError(f"Нет исходника: {SOURCE}")
+    shutil.copy2(SOURCE, OUTPUT)
+    prs = Presentation(str(OUTPUT))
+    apply_red_style(prs)
     prs.save(OUTPUT)
-    print(f"Created: {OUTPUT} ({total} slides, {OUTPUT.stat().st_size // 1024} KB)")
+
+    # Проверка: картинки на месте
+    src_pics = sum(
+        1 for s in Presentation(str(SOURCE)).slides for sh in s.shapes if sh.shape_type == MSO_SHAPE_TYPE.PICTURE
+    )
+    out_pics = sum(
+        1 for s in Presentation(str(OUTPUT)).slides for sh in s.shapes if sh.shape_type == MSO_SHAPE_TYPE.PICTURE
+    )
+    size_mb = OUTPUT.stat().st_size / (1024 * 1024)
+    print(f"Created: {OUTPUT} ({size_mb:.1f} MB, {len(prs.slides)} slides, pictures {out_pics}/{src_pics})")
+    if out_pics != src_pics:
+        raise RuntimeError(f"Потеряны картинки: было {src_pics}, стало {out_pics}")
 
 
 if __name__ == "__main__":
