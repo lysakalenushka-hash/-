@@ -134,6 +134,30 @@ def pfr_profile(tau_max, n_steps, ca_in=1.0, cr_in=0.0, cs_in=0.0):
     return rows, ca, cr, cs
 
 
+SCHEME_FILL = PatternFill("solid", fgColor="2E75B6")
+SCHEME_FONT = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
+PUNKT_FONT = Font(name="Calibri", bold=True, size=13, color="1F4E79")
+
+
+def write_punkt(ws, r0, text):
+    ws.merge_cells(start_row=r0, start_column=1, end_row=r0, end_column=7)
+    cell = ws.cell(r0, 1, text)
+    cell.font = PUNKT_FONT
+    cell.alignment = Alignment(vertical="center", wrap_text=True)
+    ws.row_dimensions[r0].height = 22
+    return r0 + 1
+
+
+def write_scheme(ws, r0, text):
+    ws.merge_cells(start_row=r0, start_column=1, end_row=r0, end_column=7)
+    cell = ws.cell(r0, 1, text)
+    cell.font = SCHEME_FONT
+    cell.fill = SCHEME_FILL
+    cell.alignment = Alignment(vertical="center", wrap_text=True)
+    ws.row_dimensions[r0].height = 24
+    return r0 + 1
+
+
 def write_block(ws, r0, title, rows):
     headers = [
         "τ, мин",
@@ -169,158 +193,166 @@ def write_block(ws, r0, title, rows):
 def build():
     OUT.parent.mkdir(parents=True, exist_ok=True)
     wb = Workbook()
+    widths7 = [14, 12, 16, 12, 16, 12, 16]
 
-    # ----- исходные -----
-    w0 = wb.active
-    w0.title = "Исходные"
-    w0["A1"] = "Реакторные системы. Изотермические процессы. Вариант 2"
-    w0["A1"].font = TITLE_FONT
-    w0.merge_cells("A1:B1")
-    lines = [
-        ("Реакция", "A → R → S, n1 = n2 = 1 (как л/р №3, случай n1 = n2)"),
-        ("k1, k2", "0,6 мин⁻¹ и 0,4 мин⁻¹; T = 150 °C; Ei = 0"),
-        ("CA0", "30 моль/л"),
-        ("V системы", "100 л (суммарно, одинаково для всех схем)"),
-        ("v0 через систему", "50 л/мин"),
-        ("Число аппаратов", "4, объёмы равны: Vi = 25 л"),
-        ("1. РИС-н послед.", "последовательно; расход через каждый = 50 л/мин; τi = 25/50 = 0,5 мин"),
-        ("2. РИС-н паралл.", "параллельно, одинаковая нагрузка; vi = 12,5 л/мин; τi = 25/12,5 = 2 мин"),
-        ("3. РИВ послед.", "последовательно; τi = 0,5 мин; суммарно τ = 2 мин"),
-        ("4. РИВ паралл.", "параллельно, vi = 12,5 л/мин; τi = 2 мин"),
-        ("Концентрации", "CA = 30·(1−X); CR = 30·Y; CS = 30·Z"),
-        ("ΠR системы", "v0·CR_вых = 3·CR_вых, кмоль/ч (CR в моль/л)"),
-    ]
-    for i, (a, b) in enumerate(lines, 3):
-        w0.cell(i, 1, a).font = Font(name="Calibri", bold=True, size=11)
-        w0.cell(i, 2, b).font = CELL_FONT
-        w0.cell(i, 2).alignment = Alignment(wrap_text=True)
-        w0.row_dimensions[i].height = 20
-    set_widths(w0, [22, 92])
-
-    # ----- 1. четыре РИС-н последовательно -----
-    w1 = wb.create_sheet("1_РИСн_последовательно")
-    w1["A1"] = "Схема 1. Четыре РИС-н одинакового объёма, последовательно. Данные с экрана программы."
-    w1["A1"].font = TITLE_FONT
-    w1.merge_cells("A1:G1")
-    r = 3
-    for i in range(1, 5):
-        r = write_block(w1, r, f"Реактор {i} (РИС-н), τi = 0,5 мин", CSTR_SERIES[i]) + 2
-    note = w1.cell(
-        r,
-        1,
-        "На входе следующего аппарата X, Y, Z равны выходу предыдущего. "
-        "S на экране на входе каждого реактора сбрасывается к 1 — это локальный счётчик программы, не физическая селективность.",
-    )
-    note.alignment = Alignment(wrap_text=True)
-    w1.merge_cells(start_row=r, start_column=1, end_row=r + 1, end_column=7)
-    set_widths(w1, [12, 12, 14, 12, 14, 12, 14])
-    w1.page_setup.orientation = "landscape"
-    w1.freeze_panes = "A3"
-
-    # ----- 2. четыре РИС-н параллельно -----
-    w2 = wb.create_sheet("2_РИСн_параллельно")
-    w2["A1"] = (
-        "Схема 2. Четыре РИС-н одинакового объёма, параллельно, одинаковая нагрузка. "
-        "Каждый: Vi = 25 л, vi = 12,5 л/мин, τi = 2 мин — как единичный РИС-н л/р №3."
-    )
-    w2["A1"].font = TITLE_FONT
-    w2.merge_cells("A1:G1")
-    w2.row_dimensions[1].height = 32
-    ca, cr, cs = cstr_from_inlet(2.0, 1.0, 0.0, 0.0)
-    x, y, z, _ = xyz_from_c(ca, cr, cs)
-    # экран единичного РИС-н л/р №3
-    rows_par = [
+    ca_p, cr_p, cs_p = cstr_from_inlet(2.0, 1.0, 0.0, 0.0)
+    x_par, y_par, z_par, _ = xyz_from_c(ca_p, cr_p, cs_p)
+    rows_cstr_par = [
         (0.0, 0.0000, 0.0000, 0.0000),
         (2.0, 0.5454, 0.3030, 0.2424),
     ]
-    r = 3
-    for i in range(1, 5):
-        r = write_block(
-            w2,
-            r,
-            f"Реактор {i} (РИС-н, параллель) — состав тот же, что у остальных трёх",
-            rows_par,
-        ) + 2
-    w2.cell(
-        r,
-        1,
-        f"Проверка баланса РИС-н: X = {x:.4f}, Y = {y:.4f}, Z = {z:.4f} (совпадает с экраном 0,5454 / 0,3030 / 0,2424).",
-    ).alignment = Alignment(wrap_text=True)
-    w2.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
-    set_widths(w2, [12, 12, 14, 12, 14, 12, 14])
-    w2.page_setup.orientation = "landscape"
+    ca_in, cr_in, cs_in = 1.0, 0.0, 0.0
+    pfr_series = []
+    for _i in range(4):
+        rows, ca_in, cr_in, cs_in = pfr_profile(0.5, 5, ca_in, cr_in, cs_in)
+        pfr_series.append(rows)
+    rows_pfr_par, *_rest = pfr_profile(2.0, 10, 1.0, 0.0, 0.0)
 
-    # ----- 3. четыре РИВ последовательно -----
-    w3 = wb.create_sheet("3_РИВ_последовательно")
+    # ========== п. 1 ==========
+    w1 = wb.active
+    w1.title = "1. Концентрации"
+    w1["A1"] = "Оформление результатов моделирования. Вариант 2. Реакторные системы"
+    w1["A1"].font = TITLE_FONT
+    w1.merge_cells("A1:G1")
+    w1.row_dimensions[1].height = 22
+
+    write_punkt(
+        w1,
+        3,
+        "Пункт 1. Реальные концентрации A, R, S через безразмерные X, Y, Z с экрана программы",
+    )
+    w1.merge_cells("A4:G6")
+    w1["A4"] = (
+        "CA = CA0 · (1 − X)\n"
+        "CR = CA0 · Y\n"
+        "CS = CA0 · Z\n"
+        "CA0 = 30 моль/л. Ниже — пример для выхода 1-го РИС-н в схеме 1 (X, Y, Z с экрана)."
+    )
+    w1["A4"].alignment = Alignment(wrap_text=True, vertical="top")
+    w1["A4"].font = Font(name="Calibri", size=12)
+    w1.row_dimensions[4].height = 28
+    w1.row_dimensions[5].height = 20
+    w1.row_dimensions[6].height = 20
+
+    for i, h in enumerate(
+        ["Величина", "Формула", "Подстановка", "Результат", "", "", ""], 1
+    ):
+        if h:
+            style_header(w1.cell(8, i, h))
+    x0, y0, z0 = 0.2308, 0.1923, 0.0385
+    examples = [
+        ("CA, моль/л", "CA0·(1−X)", f"30·(1−{x0})", CA0 * (1 - x0)),
+        ("CR, моль/л", "CA0·Y", f"30·{y0}", CA0 * y0),
+        ("CS, моль/л", "CA0·Z", f"30·{z0}", CA0 * z0),
+    ]
+    for i, (a, b, c, d) in enumerate(examples):
+        style_cell(w1.cell(9 + i, 1, a))
+        style_cell(w1.cell(9 + i, 2, b))
+        style_cell(w1.cell(9 + i, 3, c))
+        cell = w1.cell(9 + i, 4, d)
+        style_cell(cell, CONC_FMT)
+    w1.merge_cells("A13:G14")
+    w1["A13"] = (
+        "Все таблицы пункта 2 построены по этим формулам. "
+        "k1 = 0,6 мин⁻¹, k2 = 0,4 мин⁻¹ (л/р №3, n1 = n2 = 1). "
+        "VΣ = 100 л, v0 = 50 л/мин, 4 аппарата по Vi = 25 л."
+    )
+    w1["A13"].alignment = Alignment(wrap_text=True, vertical="top")
+    set_widths(w1, [18, 18, 22, 16, 12, 12, 12])
+    w1.page_setup.orientation = "landscape"
+    w1.page_setup.fitToPage = True
+    w1.page_setup.fitToWidth = 1
+    w1.page_setup.fitToHeight = 1
+
+    # ========== п. 2 ==========
+    w2 = wb.create_sheet("2. Таблицы")
+    w2["A1"] = "Пункт 2. Таблицы моделирования для каждого реактора каждой системы"
+    w2["A1"].font = TITLE_FONT
+    w2.merge_cells("A1:G1")
+    r = 3
+
+    r = write_scheme(
+        w2,
+        r,
+        "Система 1. Четыре последовательно соединённых РИС-н одинакового объёма  "
+        "(vi = 50 л/мин, τi = 0,5 мин). Экран программы.",
+    )
+    r += 1
+    for i in range(1, 5):
+        r = write_block(w2, r, f"Реактор {i}", CSTR_SERIES[i]) + 2
+
+    r = write_scheme(
+        w2,
+        r,
+        "Система 2. Четыре параллельно соединённых РИС-н одинакового объёма, "
+        "одинаковая нагрузка (vi = 12,5 л/мин, τi = 2 мин).",
+    )
+    r += 1
+    for i in range(1, 5):
+        r = write_block(w2, r, f"Реактор {i}", rows_cstr_par) + 2
+
+    r = write_scheme(
+        w2,
+        r,
+        "Система 3. Четыре последовательно соединённых РИВ одинакового объёма "
+        "(vi = 50 л/мин, τi = 0,5 мин).",
+    )
+    r += 1
+    for i, rows in enumerate(pfr_series, 1):
+        r = write_block(w2, r, f"Реактор {i}", rows) + 2
+
+    r = write_scheme(
+        w2,
+        r,
+        "Система 4. Четыре параллельно соединённых РИВ одинакового объёма, "
+        "одинаковая нагрузка (vi = 12,5 л/мин, τi = 2 мин).",
+    )
+    r += 1
+    for i in range(1, 5):
+        r = write_block(w2, r, f"Реактор {i}", rows_pfr_par) + 2
+
+    set_widths(w2, widths7)
+    w2.page_setup.orientation = "landscape"
+    w2.page_setup.fitToPage = True
+    w2.page_setup.fitToWidth = 1
+    w2.page_setup.fitToHeight = 0
+    w2.sheet_properties.pageSetUpPr.fitToPage = True
+    w2.freeze_panes = "A3"
+    w2.print_title_rows = "1:1"
+
+    # ========== п. 3 ==========
+    w3 = wb.create_sheet("3. Производительность")
     w3["A1"] = (
-        "Схема 3. Четыре РИВ одинакового объёма, последовательно. "
-        "Каждый τi = 0,5 мин; вместе эквивалентны одному РИВ V = 100 л, τ = 2 мин."
+        "Пункт 3. Производительность систем по целевому продукту R "
+        "и сравнение с единичными РИС-н и РИВ (л/р №3, n1 = n2)"
     )
     w3["A1"].font = TITLE_FONT
-    w3.merge_cells("A1:G1")
+    w3.merge_cells("A1:F1")
     w3.row_dimensions[1].height = 32
-    r = 3
-    ca_in, cr_in, cs_in = 1.0, 0.0, 0.0
-    pfr_series_outlets = []
-    for i in range(1, 5):
-        rows, ca_in, cr_in, cs_in = pfr_profile(0.5, 5, ca_in, cr_in, cs_in)
-        pfr_series_outlets.append(rows[-1])
-        r = write_block(w3, r, f"Реактор {i} (РИВ), τi = 0…0,5 мин (шаг 0,1)", rows) + 2
-    x, y, z = pfr_series_outlets[-1][1], pfr_series_outlets[-1][2], pfr_series_outlets[-1][3]
-    w3.cell(
-        r,
-        1,
-        f"Выход системы: X = {x:.4f}, Y = {y:.4f}, Z = {z:.4f} — как единичный РИВ л/р №3 (0,6988 / 0,4444 / 0,2544).",
-    ).alignment = Alignment(wrap_text=True)
-    w3.merge_cells(start_row=r, start_column=1, end_row=r, end_column=7)
-    set_widths(w3, [12, 12, 14, 12, 14, 12, 14])
-    w3.page_setup.orientation = "landscape"
-    w3.freeze_panes = "A3"
-
-    # ----- 4. четыре РИВ параллельно -----
-    w4 = wb.create_sheet("4_РИВ_параллельно")
-    w4["A1"] = (
-        "Схема 4. Четыре РИВ одинакового объёма, параллельно, одинаковая нагрузка. "
-        "Каждый τi = 2 мин — как единичный РИВ л/р №3."
+    w3.merge_cells("A3:F3")
+    w3["A3"] = (
+        "ΠR = v0 · CR_вых. v0 системы = 50 л/мин = 3 м³/ч, CR в кмоль/м³ (= моль/л), "
+        "поэтому ΠR = 3 · CR, кмоль/ч. Для параллельных схем смешение потоков: "
+        "CR_вых = CR каждого аппарата (нагрузки равны)."
     )
-    w4["A1"].font = TITLE_FONT
-    w4.merge_cells("A1:G1")
-    w4.row_dimensions[1].height = 32
-    rows_pfr, *_rest = pfr_profile(2.0, 10, 1.0, 0.0, 0.0)
-    # подставить экранные точки л/р №3 на узлах 0,2
-    r = 3
-    for i in range(1, 5):
-        r = write_block(
-            w4,
-            r,
-            f"Реактор {i} (РИВ, параллель) — профиль тот же, что у остальных трёх",
-            rows_pfr,
-        ) + 2
-    set_widths(w4, [12, 12, 14, 12, 14, 12, 14])
-    w4.page_setup.orientation = "landscape"
-    w4.freeze_panes = "A3"
+    w3["A3"].alignment = Alignment(wrap_text=True, vertical="center")
+    w3.row_dimensions[3].height = 36
 
-    # ----- ΠR, сравнение, вывод -----
-    w5 = wb.create_sheet("Производительность_вывод")
-    w5["A1"] = "Производительность систем по R и сравнение (п. 3–4 задания)"
-    w5["A1"].font = TITLE_FONT
-    w5.merge_cells("A1:F1")
-
-    headers = ["Схема", "X вых.", "Y вых.", "CR, моль/л", "ΠR, кмоль/ч", "Примечание"]
+    headers = ["Схема", "X вых.", "Y вых.", "CR, моль/л", "ΠR, кмоль/ч", "Сравнение с л/р №3"]
     for i, h in enumerate(headers, 1):
-        style_header(w5.cell(3, i, h))
-    w5.row_dimensions[3].height = 28
+        style_header(w3.cell(5, i, h))
+    w3.row_dimensions[5].height = 32
 
     y_ser = CSTR_SERIES[4][-1][2]
     y_cstr = SINGLE_CSTR[2]
     y_pfr = SINGLE_PFR[2]
     data = [
-        ("Единичный РИС-н (л/р №3)", SINGLE_CSTR[1], y_cstr, "τ = 2 мин, V = 100 л"),
-        ("Единичный РИВ (л/р №3)", SINGLE_PFR[1], y_pfr, "τ = 2 мин, V = 100 л"),
-        ("4 РИС-н последовательно", CSTR_SERIES[4][-1][1], y_ser, "τi = 0,5 мин, Στ = 2 мин"),
-        ("4 РИС-н параллельно", SINGLE_CSTR[1], y_cstr, "как один РИС-н: τi = 2 мин"),
-        ("4 РИВ последовательно", SINGLE_PFR[1], y_pfr, "как один РИВ: Στ = 2 мин"),
-        ("4 РИВ параллельно", SINGLE_PFR[1], y_pfr, "как один РИВ: τi = 2 мин"),
+        ("Единичный РИС-н, л/р №3", SINGLE_CSTR[1], y_cstr, "база для схем 2"),
+        ("Единичный РИВ, л/р №3", SINGLE_PFR[1], y_pfr, "база для схем 3 и 4"),
+        ("1. 4 РИС-н последовательно", CSTR_SERIES[4][-1][1], y_ser, "выше единичного РИС-н, ниже РИВ"),
+        ("2. 4 РИС-н параллельно", SINGLE_CSTR[1], y_cstr, "совпадает с единичным РИС-н"),
+        ("3. 4 РИВ последовательно", SINGLE_PFR[1], y_pfr, "совпадает с единичным РИВ"),
+        ("4. 4 РИВ параллельно", SINGLE_PFR[1], y_pfr, "совпадает с единичным РИВ"),
     ]
     for i, (name, x, y, note) in enumerate(data):
         cr = CA0 * y
@@ -328,61 +360,119 @@ def build():
         vals = [name, x, y, cr, pir, note]
         fmts = [None, NUM_FMT, NUM_FMT, CONC_FMT, "0.00", None]
         for j, (v, fmt) in enumerate(zip(vals, fmts), 1):
-            cell = w5.cell(4 + i, j, v)
+            cell = w3.cell(6 + i, j, v)
             style_cell(cell, fmt)
             if j in (1, 6):
                 cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        if i >= 2:
+            for j in range(1, 7):
+                w3.cell(6 + i, j).fill = PatternFill("solid", fgColor="FFF2CC")
         if "РИВ" in name:
             for j in range(1, 7):
-                w5.cell(4 + i, j).fill = PatternFill("solid", fgColor="E2EFDA")
+                w3.cell(6 + i, j).fill = PatternFill("solid", fgColor="E2EFDA")
+
+    w3.merge_cells("A13:F17")
+    w3["A13"] = (
+        "Почему так. Параллельные РИС-н: каждый получает v0/4 и Vi = V/4, поэтому τi = Vi/vi = 2 мин — "
+        "как у единичного РИС-н, выход и ΠR те же (27,27 кмоль/ч). "
+        "Параллельные РИВ: τi = 2 мин, выход как у единичного РИВ, ΠR = 40,00 кмоль/ч. "
+        "Последовательные РИВ: времена пребывания складываются, Στ = 2 мин — снова один РИВ, ΠR = 40,00. "
+        "Последовательные РИС-н: каскад четырёх ёмкостей приближает режим к вытеснению, "
+        "ΠR = 35,68 кмоль/ч — между 27,27 и 40,00."
+    )
+    w3["A13"].alignment = Alignment(wrap_text=True, vertical="top")
+    w3["A13"].font = Font(name="Calibri", size=12)
+    w3.row_dimensions[13].height = 48
 
     chart = BarChart()
     chart.type = "col"
     chart.title = "ΠR, кмоль/ч"
     chart.y_axis.title = "ΠR, кмоль/ч"
     chart.legend = None
-    data_ref = Reference(w5, min_col=5, min_row=3, max_row=9)
-    cats = Reference(w5, min_col=1, min_row=4, max_row=9)
+    data_ref = Reference(w3, min_col=5, min_row=5, max_row=11)
+    cats = Reference(w3, min_col=1, min_row=6, max_row=11)
     chart.add_data(data_ref, titles_from_data=True)
     chart.set_categories(cats)
-    chart.shape = 4
     chart.width = 18
     chart.height = 9
-    w5.add_chart(chart, "A12")
+    w3.add_chart(chart, "A19")
+    set_widths(w3, [34, 12, 12, 14, 16, 42])
+    w3.page_setup.orientation = "landscape"
 
-    w5["A28"] = "Вывод"
-    w5["A28"].font = SUB_FONT
-    conclusion = (
-        "Кинетика n1 = n2 = 1, k1 = 0,6 мин⁻¹, k2 = 0,4 мин⁻¹, CA0 = 30 моль/л, "
-        "суммарный объём 100 л, расход системы 50 л/мин.\n\n"
-        "Четыре РИС-н параллельно дают тот же выход, что единичный РИС-н (X = 0,5454, "
-        "ΠR = 27,27 кмоль/ч): нагрузка и τ на каждый аппарат те же (τi = 2 мин). "
-        "Четыре РИВ — и последовательно, и параллельно — совпадают с единичным РИВ "
-        "(X = 0,6988, ΠR = 40,00 кмоль/ч): в ряду складываются времена пребывания, "
-        "в параллели каждое τi = 2 мин при том же кинетическом режиме.\n\n"
-        "Четыре РИС-н последовательно лучше одного РИС-н и хуже РИВ: X = 0,6498, "
-        "Y = 0,3964, ΠR = 35,68 кмоль/ч. Каскад смешения приближается к вытеснению "
-        "(модель ёмкостей в ряду).\n\n"
-        "Гидравлическое сопротивление. В последовательных схемах через каждый аппарат "
-        "идёт полный расход 50 л/мин, перепады складываются — сопротивление системы выше. "
-        "В параллельных схемах расход на аппарат 12,5 л/мин, общий ΔP определяется одной "
-        "ветвью и заметно меньше. По ΠR вытеснение (ряд или параллель) равно и максимально; "
-        "по гидравлике выгоднее параллельный РИВ: та же производительность 40 кмоль/ч при "
-        "меньшем сопротивлении."
+    # ========== п. 4 ==========
+    w4 = wb.create_sheet("4. Сравнение систем")
+    w4["A1"] = (
+        "Пункт 4. Сравнение реакторных систем по производительности и по гидравлическому сопротивлению"
     )
-    w5.merge_cells("A29:F36")
-    c = w5["A29"]
-    c.value = conclusion
-    c.alignment = Alignment(wrap_text=True, vertical="top")
-    c.font = Font(name="Calibri", size=12)
-    w5.row_dimensions[29].height = 80
-    set_widths(w5, [32, 12, 12, 14, 16, 42])
-    w5.page_setup.orientation = "landscape"
+    w4["A1"].font = TITLE_FONT
+    w4.merge_cells("A1:D1")
+    w4.row_dimensions[1].height = 28
+
+    h4 = ["Система", "ΠR, кмоль/ч", "Гидравлическое сопротивление", "Итог"]
+    for i, h in enumerate(h4, 1):
+        style_header(w4.cell(3, i, h))
+    w4.row_dimensions[3].height = 32
+    rows4 = [
+        (
+            "1. 4 РИС-н последовательно",
+            35.68,
+            "Через каждый аппарат идёт полный расход 50 л/мин, четыре перепада складываются — ΔP высокое.",
+            "ΠR средняя, гидравлика тяжёлая",
+        ),
+        (
+            "2. 4 РИС-н параллельно",
+            27.27,
+            "Расход на ветвь 12,5 л/мин, общий ΔP ≈ одной ветви — сопротивление низкое.",
+            "ΠR как у одного РИС-н, гидравлика лёгкая",
+        ),
+        (
+            "3. 4 РИВ последовательно",
+            40.00,
+            "Полный расход 50 л/мин через все четыре РИВ, ΔP максимальное среди схем.",
+            "ΠR максимальная, гидравлика самая тяжёлая",
+        ),
+        (
+            "4. 4 РИВ параллельно",
+            40.00,
+            "Расход 12,5 л/мин на ветвь, ΔP как у одного РИВ малого расхода — ниже, чем в ряду.",
+            "ΠR максимальная при меньшем ΔP — предпочтительная схема",
+        ),
+    ]
+    for i, (a, b, c, d) in enumerate(rows4):
+        style_cell(w4.cell(4 + i, 1, a))
+        w4.cell(4 + i, 1).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        cellb = w4.cell(4 + i, 2, b)
+        style_cell(cellb, "0.00")
+        style_cell(w4.cell(4 + i, 3, c))
+        w4.cell(4 + i, 3).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        style_cell(w4.cell(4 + i, 4, d))
+        w4.cell(4 + i, 4).alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        w4.row_dimensions[4 + i].height = 48
+        if i in (2, 3):
+            for j in range(1, 5):
+                w4.cell(4 + i, j).fill = PatternFill("solid", fgColor="E2EFDA")
+
+    w4.merge_cells("A9:D12")
+    w4["A9"] = (
+        "Вывод по п. 4. По производительности системы ранжируются так: "
+        "4 РИВ (ряд или параллель, 40,00) > 4 РИС-н в ряду (35,68) > 4 РИС-н параллельно (27,27). "
+        "По гидравлическому сопротивлению наоборот выгоднее параллель: меньший расход на аппарат. "
+        "Компромисс — четыре РИВ параллельно: та же ΠR, что у вытеснения, при меньшем сопротивлении, "
+        "чем у четырёх РИВ в ряду."
+    )
+    w4["A9"].alignment = Alignment(wrap_text=True, vertical="top")
+    w4["A9"].font = Font(name="Calibri", size=12)
+    w4.row_dimensions[9].height = 40
+    set_widths(w4, [34, 16, 70, 42])
+    w4.page_setup.orientation = "landscape"
+    w4.page_setup.fitToPage = True
+    w4.page_setup.fitToWidth = 1
+    w4.page_setup.fitToHeight = 1
 
     wb.save(OUT)
     print("saved", OUT)
-    print("4 CSTR series Y", y_ser, "Pi", PI_FACTOR * CA0 * y_ser)
-    print("PFR series last", pfr_series_outlets[-1])
+    print("sheets", wb.sheetnames)
+    print("PFR series last", pfr_series[-1][-1])
 
 
 if __name__ == "__main__":
