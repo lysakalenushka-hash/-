@@ -103,13 +103,11 @@ def restyle_table(table):
 
 def ensure_footer(slide, page, total, dark=False):
     c = RGBColor(0x8A, 0xA0, 0xB8) if dark else FOOT
-    brand_box = page_box = None
+    page_box = None
     for sh in slide.shapes:
         if is_comment(sh) or not sh.has_text_frame:
             continue
         t = sh.text_frame.text.strip()
-        if "конфиденциально" in t or t.startswith("Lab-Интеллект"):
-            brand_box = sh
         if " /  " in t and len(t) < 18:
             page_box = sh
 
@@ -123,15 +121,6 @@ def ensure_footer(slide, page, total, dark=False):
         r.text = text
         set_run(r, 11, False, c)
 
-    if brand_box:
-        place(brand_box, BRAND_L, FOOT_T, BRAND_W, FOOT_H, BRAND, PP_ALIGN.LEFT)
-    else:
-        box = slide.shapes.add_textbox(BRAND_L, FOOT_T, BRAND_W, FOOT_H)
-        p = box.text_frame.paragraphs[0]
-        p.alignment = PP_ALIGN.LEFT
-        r = p.add_run()
-        r.text = BRAND
-        set_run(r, 11, False, c)
     if page_box:
         place(page_box, PAGE_L, FOOT_T, PAGE_W, FOOT_H, f"{page}  /  {total}", PP_ALIGN.RIGHT)
     else:
