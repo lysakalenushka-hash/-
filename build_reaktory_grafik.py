@@ -242,9 +242,20 @@ def make_scatter(ws, title, x_col, y_cols, start_row, n_pts, anchor, y_max=32.0)
     chart.x_axis.axId = 1
     chart.y_axis.axId = 2
     chart.legend = Legend()
-    chart.legend.position = "r"
-    chart.width = 18
-    chart.height = 10
+    chart.legend.position = "b"
+    chart.legend.overlay = False
+    # поле точек чуть выше нижней легенды
+    chart.plot_area.layout = Layout(
+        manualLayout=ManualLayout(
+            layoutTarget="inner",
+            xMode="edge",
+            yMode="edge",
+            x=0.10,
+            y=0.04,
+            w=0.84,
+            h=0.78,
+        )
+    )
 
     xvalues = Reference(ws, min_col=x_col, min_row=start_row, max_row=start_row + n_pts - 1)
     for col, ser_title, symbol, accent, size in y_cols:
@@ -257,6 +268,8 @@ def make_scatter(ws, title, x_col, y_cols, start_row, n_pts, anchor, y_max=32.0)
         chart.series.append(ser)
 
     chart.anchor = anchor
+    chart.width = 18
+    chart.height = 11
     ws.add_chart(chart)
     return chart
 
@@ -510,9 +523,18 @@ def preview_pngs():
         ax.set_xlim(0, 2)
         ax.set_ylim(0, 32)
         ax.grid(True, ls="-", color="#D0D0D0")
-        ax.legend(frameon=True, loc="center right")
+        ax.legend(
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.16),
+            ncol=3,
+            frameon=True,
+            fancybox=False,
+            borderaxespad=0.4,
+            fontsize=11,
+        )
         fig.tight_layout()
-        fig.savefig(PREVIEW_DIR / fname)
+        fig.subplots_adjust(bottom=0.20)
+        fig.savefig(PREVIEW_DIR / fname, bbox_inches="tight")
         plt.close(fig)
 
     plot_one(PFR[1], "РИВ, случай 1 — маркеры как в Kniga1 (квадрат / звезда / x)", "graf_riv_sluchaj1.png")
