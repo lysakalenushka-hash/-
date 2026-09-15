@@ -36,7 +36,7 @@ V0_L_MIN = 50.0
 # ΠR = v0·CR : 50 л/мин · CR моль/л · 60 мин/ч / 1000 = 3·CR кмоль/ч
 PI_FACTOR = V0_L_MIN * 60 / 1000.0
 
-# РИВ — точки с экрана программы (без промежуточной 1.85)
+# РИВ — все точки с экрана программы
 PFR = {
     1: [  # n1=2, n2=1
         (0.0, 0.0000, 0.0000, 0.0000, 1.0000),
@@ -49,6 +49,7 @@ PFR = {
         (1.4, 0.4565, 0.3303, 0.1262, 0.7236),
         (1.6, 0.4898, 0.3369, 0.1529, 0.6878),
         (1.8, 0.5192, 0.3393, 0.1800, 0.6534),
+        (1.85, 0.5261, 0.3393, 0.1868, 0.6450),
         (2.0, 0.5455, 0.3384, 0.2071, 0.6203),
     ],
     2: [  # n1=n2=1
@@ -93,25 +94,43 @@ CASE_TITLES = {
 }
 
 
-def cstr_case1_profile():
-    """Профиль РИС-н для графика случая 1 (кинетика как в программе, C0=1)."""
+def _round4(x):
+    return round(x, 4)
+
+
+def cstr_profile(case: int):
+    """Полный ряд τ=0…2 для РИС-н (кинетика программы, C0=1). На τ=2 — значения с экрана."""
     k1, k2 = 0.6, 0.4
     rows = []
     for i in range(11):
         tau = round(i * 0.2, 1)
         if tau == 0:
             x = y = z = 0.0
-        else:
+        elif case == 1:
             ca = (-1.0 + math.sqrt(1.0 + 4.0 * k1 * tau)) / (2.0 * k1 * tau)
             x = 1.0 - ca
-            cr = k1 * ca**2 * tau / (1.0 + k2 * tau)
-            z = k2 * cr * tau
-            y = cr
-        s = y / x if x else 1.0
-        rows.append((tau, x, y, z, s))
-    # подставить экранные значения на τ=2
-    rows[-1] = (2.0, *CSTR_OUT[1])
+            y = k1 * ca**2 * tau / (1.0 + k2 * tau)
+            z = k2 * y * tau
+        elif case == 2:
+            ca = 1.0 / (1.0 + k1 * tau)
+            x = 1.0 - ca
+            y = k1 * ca * tau / (1.0 + k2 * tau)
+            z = k2 * y * tau
+        else:
+            ca = 1.0 / (1.0 + k1 * tau)
+            x = 1.0 - ca
+            a = k2 * tau
+            c = -k1 * ca * tau
+            y = (-1.0 + math.sqrt(1.0 - 4.0 * a * c)) / (2.0 * a)
+            z = k2 * y**2 * tau
+        s = (y / x) if x else 1.0
+        rows.append((tau, _round4(x), _round4(y), _round4(z), _round4(s)))
+    rows[-1] = (2.0, *CSTR_OUT[case])
     return rows
+
+
+def cstr_case1_profile():
+    return cstr_profile(1)
 
 
 def conc_row(tau, x, y, z, s):
@@ -414,9 +433,7 @@ def build():
     for case in (1, 2, 3):
         r_start, n = write_table(wt, r, 1, f"РИВ, {CASE_TITLES[case]}", PFR[case])
         r = r_start + n + 3
-        x, y, z, s = CSTR_OUT[case]
-        cstr_two = [(0.0, 0.0, 0.0, 0.0, 1.0), (2.0, x, y, z, s)]
-        r_start, n = write_table(wt, r, 1, f"РИС-н (экран программы), {CASE_TITLES[case]}", cstr_two)
+        r_start, n = write_table(wt, r, 1, f"РИС-н, {CASE_TITLES[case]}", cstr_profile(case))
         r = r_start + n + 4
 
     set_widths(wt, [12, 12, 14, 12, 14, 12, 14, 12, 12, 14])
