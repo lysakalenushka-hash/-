@@ -383,7 +383,7 @@ def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
         append_runs(pv, [omml_sqrt_abs(a, b)])
 
     add_p(doc, "Уравнения массового баланса:", size=14, bold=True, space_before=10)
-    add_p(doc, "9’) (V3 – V5 )/S1= (H1(t(k))- H1(t(o)))/ Δt = f9", space_after=2)
+    add_p(doc, "9’) (–V3 – V5 )/S1= (H1(t(k))- H1(t(o)))/ Δt = f9", space_after=2)
     add_p(doc, "9*) H1(t(o))= H1(o)", space_after=6)
     add_p(doc, "10’) (V1 + V3 – V4 – V6 – V7 )/S2= (H2(t(k))- H2(t(o)))/ Δt = f10", space_after=2)
     add_p(doc, "10*) H2(t(o))= H2(o)", space_after=6)
