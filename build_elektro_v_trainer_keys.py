@@ -19,6 +19,7 @@ RTN_PATH = Path("/tmp/Prilozhenie_2_RTN.xlsx")
 TRAINER_FILES = [
     ("prombez24", Path("/tmp/prombez24_eb1260.json")),
     ("tests24.su", Path("/tmp/tests24_eb1260.json")),
+    ("prombez24 спецразделы", Path("/tmp/prombez24_spec.json")),
 ]
 DOCX_FILES = [
     (
@@ -112,18 +113,28 @@ def map_correct(rtn_opts: list[str], trainer_correct: list[str]) -> list[int]:
     if not trainer_correct:
         return flags
     tnorm = [norm(t) for t in trainer_correct]
+
+    def score(a: str, b: str) -> float:
+        if a == b:
+            return 1.0
+        if a and b:
+            if re.search(r"(^|[^а-яa-z0-9])" + re.escape(a) + r"([^а-яa-z0-9]|$)", b) and len(a) <= 8:
+                return 0.95
+            if a in b or b in a:
+                if min(len(a), len(b)) >= 2:
+                    return 0.93
+        return SequenceMatcher(None, a[:200], b[:200]).ratio()
+
     for i, opt in enumerate(rtn_opts):
         no = norm(opt)
         for tn in tnorm:
-            sc = 1.0 if no == tn else SequenceMatcher(None, no[:200], tn[:200]).ratio()
-            if sc >= 0.86:
+            if score(no, tn) >= 0.82:
                 flags[i] = 1
                 break
     if sum(flags) == 0 and len(trainer_correct) == 1 and rtn_opts:
-        # last resort: pick closest option
         t = norm(trainer_correct[0])
-        j = max(range(len(rtn_opts)), key=lambda k: SequenceMatcher(None, norm(rtn_opts[k])[:200], t[:200]).ratio())
-        if SequenceMatcher(None, norm(rtn_opts[j])[:200], t[:200]).ratio() >= 0.72:
+        j = max(range(len(rtn_opts)), key=lambda k: score(norm(rtn_opts[k]), t))
+        if score(norm(rtn_opts[j]), t) >= 0.68:
             flags[j] = 1
     return flags
 
@@ -188,6 +199,9 @@ def load_trainers():
     for name, path in TRAINER_FILES:
         if path.exists():
             ingest(name, json.loads(path.read_text(encoding="utf-8")))
+    npa_path = Path("npa_keys_остаток_V.json")
+    if npa_path.exists():
+        ingest("ПТЭЭП № 811 (открытый текст)", json.loads(npa_path.read_text(encoding="utf-8")))
     for name, path in DOCX_FILES:
         if path.exists():
             ingest(name, parse_24test_docx(path))
@@ -248,12 +262,12 @@ def main():
     rows = [
         (
             "Источник ключей",
-            "Бесплатные тренажёры prombez24 и tests24.su (ЭБ 1260.25) плюс купленные дампы 24тест.рф: "
-            "PT_PR_1_5 (V выше 1000 В) и PT_PR_0_4 (IV до 1000 В) от 01.09.2026v2.",
+            "ЭБ 1260.25 (prombez24/tests24/24тест) плюс спецразделы prombez24: выше 6000 В, краны, КЛ, "
+            "сварка, электродвигатели, ЭТЛ, электротермия, техэлектростанции (V до и выше 1000 В).",
         ),
         ("Банк вопросов", "Приложение 2 РТН, лист V, промышленные потребители, 701 вопрос."),
         ("Вопросов в тренажёре prombez24", src_counts.get("prombez24", 0)),
-        ("Вопросов в билетах tests24.su", src_counts.get("tests24.su", 0)),
+        ("Вопросов в спецразделах prombez24", src_counts.get("prombez24 спецразделы", 0)),
         ("Вопросов в дампе 24тест V выше 1000", src_counts.get("24тест V выше 1000", 0)),
         ("Вопросов в дампе 24тест IV до 1000", src_counts.get("24тест IV до 1000", 0)),
         ("Совпало с РТН и проставлен ключ", keyed),
