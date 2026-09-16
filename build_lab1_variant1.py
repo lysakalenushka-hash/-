@@ -69,7 +69,7 @@ def _mr(text, *, sub=False):
 
 
 def omml_sqrt_abs(left: str, right: str):
-    omath = etree.Element("{%s}oMath" % M_NS)
+    omath = etree.Element("{%s}oMath" % M_NS, nsmap={"m": M_NS})
     omath.append(_mr("√"))
     d = etree.SubElement(omath, "{%s}d" % M_NS)
     dpr = etree.SubElement(d, "{%s}dPr" % M_NS)
@@ -84,7 +84,7 @@ def omml_sqrt_abs(left: str, right: str):
 
 
 def omml_pn():
-    omath = etree.Element("{%s}oMath" % M_NS)
+    omath = etree.Element("{%s}oMath" % M_NS, nsmap={"m": M_NS})
     ssup = etree.SubElement(omath, "{%s}sSup" % M_NS)
     e = etree.SubElement(ssup, "{%s}e" % M_NS)
     e.append(_mr("Р"))
@@ -278,7 +278,6 @@ def draw_flow(path: Path) -> None:
 
 def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
     doc = Document()
-    doc.element.set("{http://www.w3.org/2000/xmlns/}m", M_NS)
     sec = doc.sections[0]
     sec.top_margin = Cm(2)
     sec.bottom_margin = Cm(2)
