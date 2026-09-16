@@ -10,11 +10,15 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import matplotlib.patches as mp
 from matplotlib.patches import FancyBboxPatch
+from lxml import etree
 from docx import Document
-from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt, RGBColor
+from docx.shared import Cm, Pt
+
+M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+etree.register_namespace("m", M_NS)
 
 OUT_DIR = Path("лаба1_вариант4")
 DOCX = Path("Лабораторная_работа_1_гидравлика_вариант_4.docx")
@@ -53,6 +57,60 @@ def shade_header(cell):
     tcPr.append(shd)
 
 
+def _mr(text, *, sub=False):
+    r = etree.Element("{%s}r" % M_NS)
+    rpr = etree.SubElement(r, "{%s}rPr" % W_NS)
+    fonts = etree.SubElement(rpr, "{%s}rFonts" % W_NS)
+    fonts.set(qn("w:ascii"), "Cambria Math")
+    fonts.set(qn("w:hAnsi"), "Cambria Math")
+    etree.SubElement(rpr, "{%s}sz" % W_NS).set(qn("w:val"), "28")
+    etree.SubElement(rpr, "{%s}szCs" % W_NS).set(qn("w:val"), "28")
+    if sub:
+        etree.SubElement(rpr, "{%s}vertAlign" % W_NS).set(qn("w:val"), "subscript")
+    mpr = etree.SubElement(r, "{%s}rPr" % M_NS)
+    etree.SubElement(mpr, "{%s}sty" % M_NS).set(qn("m:val"), "p")
+    t = etree.SubElement(r, "{%s}t" % M_NS)
+    t.set("{http://www.w3.org/XML/1998/namespace}space", "preserve")
+    t.text = text
+    return r
+
+
+def omml_sqrt_abs(left: str, right: str):
+    """√|Pleft − Pright| — как в примерной лабораторной (формула Word)."""
+    omath = etree.Element("{%s}oMath" % M_NS)
+    omath.append(_mr("√"))
+    d = etree.SubElement(omath, "{%s}d" % M_NS)
+    dpr = etree.SubElement(d, "{%s}dPr" % M_NS)
+    etree.SubElement(dpr, "{%s}begChr" % M_NS).set(qn("m:val"), "|")
+    etree.SubElement(dpr, "{%s}endChr" % M_NS).set(qn("m:val"), "|")
+    e = etree.SubElement(d, "{%s}e" % M_NS)
+    e.append(_mr("Р"))
+    e.append(_mr(left, sub=True))
+    e.append(_mr(" – Р"))
+    e.append(_mr(right, sub=True))
+    return omath
+
+
+def omml_pn():
+    omath = etree.Element("{%s}oMath" % M_NS)
+    ssup = etree.SubElement(omath, "{%s}sSup" % M_NS)
+    e = etree.SubElement(ssup, "{%s}e" % M_NS)
+    e.append(_mr("Р"))
+    up = etree.SubElement(ssup, "{%s}sup" % M_NS)
+    up.append(_mr("N"))
+    return omath
+
+
+def append_runs(p, parts):
+    """parts: str or etree OMML element."""
+    for part in parts:
+        if isinstance(part, str):
+            run = p.add_run(part)
+            set_run_font(run)
+        else:
+            p._p.append(part)
+
+
 def draw_matrix(path: Path) -> None:
     cols = [
         "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8",
@@ -60,7 +118,8 @@ def draw_matrix(path: Path) -> None:
         "H1", "H2", "H3",
     ]
     rows = ["1", "2", "3", "4", "5", "6", "7", "8", "9'", "10'", "11'", "12", "13", "14", "15", "16", "17"]
-    det = [0, 1, 2, 3, 4, 5, 6, 7, 14, 15, 16, 11, 8, 12, 9, 13, 10]
+    # Как в примере: Паскаль (12,14,16), затем газ (13,15,17); шаг считает газ раньше.
+    det = [0, 1, 2, 3, 4, 5, 6, 7, 14, 15, 16, 8, 11, 9, 12, 10, 13]
     used = {
         0: [0, 9],
         1: [1, 10],
@@ -73,14 +132,14 @@ def draw_matrix(path: Path) -> None:
         8: [2, 4, 14],
         9: [0, 2, 3, 5, 6, 15],
         10: [1, 3, 7, 16],
-        11: [11, 14],
-        12: [8, 11, 14],
-        13: [12, 15],
-        14: [9, 12, 15],
-        15: [13, 16],
-        16: [10, 13, 16],
+        11: [8, 11, 14],
+        12: [11, 14],
+        13: [9, 12, 15],
+        14: [12, 15],
+        15: [10, 13, 16],
+        16: [13, 16],
     }
-    step_no = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 1, 2, 3, 4, 5, 6]
+    step_no = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 2, 1, 4, 3, 6, 5]
 
     fig, ax = plt.subplots(figsize=(13.8, 8.2))
     ax.set_xlim(-1.7, len(cols) + 2.3)
@@ -113,7 +172,7 @@ def draw_matrix(path: Path) -> None:
         len(cols) / 2,
         -0.5,
         "○ — переменная входит в уравнение;  ◇ — определяемая переменная.  "
-        "P1–P6, ki, Si, Hgi, PN, ρ, g — известны.",
+        "P1–P6, ki, Si, H1G–H3G, PN, ρ, g — известны.",
         ha="center",
         fontsize=8,
     )
@@ -149,9 +208,9 @@ def draw_flow(path: Path) -> None:
 
     seq = [
         (8.15, 1.15, "Ввод: P1–P6, k1–k8,\nS, Hg, PN, ρ, g, H1(0), H2(0), H3(0)"),
-        (6.90, 0.80, "12–13. P10, P7  (ёмкость 1)"),
-        (5.75, 0.80, "14–15. P11, P8  (ёмкость 2)"),
-        (4.60, 0.80, "16–17. P12, P9  (ёмкость 3)"),
+        (6.90, 0.80, "13, 12. P10, P7  (ёмкость 1)"),
+        (5.75, 0.80, "15, 14. P11, P8  (ёмкость 2)"),
+        (4.60, 0.80, "17, 16. P12, P9  (ёмкость 3)"),
         (3.40, 0.85, "1–8. Скорости V1…V8\nпо ур. Бернулли"),
         (2.15, 0.90, "9'–11'. Невязки балансов\nкоррекция H1, H2, H3"),
     ]
@@ -190,6 +249,7 @@ def draw_flow(path: Path) -> None:
 
 def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
     doc = Document()
+    doc.element.set("{http://www.w3.org/2000/xmlns/}m", M_NS)
     sec = doc.sections[0]
     sec.top_margin = Cm(2)
     sec.bottom_margin = Cm(2)
@@ -238,7 +298,7 @@ def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
         "V1 – V8 – скорость истечения жидкости через клапан;",
         "k1 – k8 – коэффициент пропускной способности клапана;",
         "H1, H2, H3 – высоты накапливаемой жидкости в ёмкости;",
-        "Hg1, Hg2, Hg3 (H1G, H2G, H3G) – геометрическая высота ёмкости.",
+        "H1G, H2G, H3G – геометрическая высота ёмкости.",
     ]:
         add_p(doc, line, space_after=2)
 
@@ -247,51 +307,55 @@ def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
         "1. Газ идеален.",
         "2. Во всех трубах протекает однофазный поток жидкости, температура которого одинакова на всех участках.",
         "3. Форма закрытой ёмкости цилиндрическая с площадью поперечного сечения S.",
-        "4. Все трубы располагаются на одном уровне, в системе нет рециклических потоков, или рециклов, не учитываются местные сопротивления и перепады давлений в трубах, т.е. рассматриваются так называемые короткие трубопроводы.",
-        "5. В емкостях, не занятых жидкостью, давление газа PN · Hgi / (Hgi − Hi).",
-        "6. Системы включают только клапаны (вентили) с постоянными, не изменяющимися коэффициентами пропускной способности и закрытые емкости.",
+        "4. Все трубы располагаются на одном уровне, в системе нет рециклических потоков, или рециклов, не учитываются местные сопротивления и перепады давлений в трубах, т.е. рассматриваются, так называемые короткие трубопроводы.",
     ]:
         add_p(doc, line, align="justify", space_after=3)
-
-    add_p(doc, "Построение системы уравнений математического описания гидравлической системы:", size=14, bold=True, space_before=12)
-    add_p(doc, "ур. Бернулли:  V = k * sign (Pвх – Pвых) * √|Pвх – Pвых|", align="center", italic=True)
-    add_p(doc, "sign – функция знака: −1, 0, +1", align="center", space_after=8)
-    add_p(doc, "ур. Паскаля:  Pж = Pг + ρ*g*H", align="center", italic=True, space_after=10)
-
-    add_p(doc, "Определение скорости потоков жидкости:", size=14, bold=True)
-    for line in [
-        "1)  V1 = k1 * sign (P1 – P8) * √|P1 – P8|",
-        "2)  V2 = k2 * sign (P2 – P9) * √|P2 – P9|",
-        "3)  V3 = k3 * sign (P7 – P8) * √|P7 – P8|",
-        "4)  V4 = k4 * sign (P8 – P9) * √|P8 – P9|",
-        "5)  V5 = k5 * sign (P7 – P3) * √|P7 – P3|",
-        "6)  V6 = k6 * sign (P8 – P4) * √|P8 – P4|",
-        "7)  V7 = k7 * sign (P8 – P5) * √|P8 – P5|",
-        "8)  V8 = k8 * sign (P9 – P6) * √|P9 – P6|",
-    ]:
-        add_p(doc, line, space_after=3)
-
-    add_p(doc, "Уравнения массового баланса:", size=14, bold=True, space_before=10)
-    add_p(doc, "9’)  (V3 – V5) / S1 = (H1(t(k)) – H1(t(0))) / Δt = f9", space_after=2)
-    add_p(doc, "9*)  H1(t(0)) = H1(0)", space_after=6)
-    add_p(doc, "10’)  (V1 + V3 – V4 – V6 – V7) / S2 = (H2(t(k)) – H2(t(0))) / Δt = f10", space_after=2)
-    add_p(doc, "10*)  H2(t(0)) = H2(0)", space_after=6)
-    add_p(doc, "11’)  (V2 + V4 – V8) / S3 = (H3(t(k)) – H3(t(0))) / Δt = f11", space_after=2)
-    add_p(doc, "11*)  H3(t(0)) = H3(0)", space_after=8)
+    p5 = add_p(doc, "5. В емкостях, не занятых жидкостью, давление газа ", align="justify", space_after=3)
+    append_runs(p5, [omml_pn(), " * H1G / (H1G – H1)."])
     add_p(
         doc,
-        "Для стационарного режима правые части 9’–11’ равны нулю: dHi/dt = 0.",
+        "6. Системы включают только клапаны(вентили) с постоянными, не изменяющимися коэффициентами пропускной способности и закрытые емкости.",
         align="justify",
+        space_after=3,
     )
+
+    add_p(doc, "Построение системы уравнений математического описания гидравлической системы:", size=14, bold=True, space_before=12)
+    pb = add_p(doc, "ур. Бернулли: V = k * sign (Рвх – Рвых) * ", align="center", italic=True)
+    pb.runs[0].italic = True
+    append_runs(pb, [omml_sqrt_abs("вх", "вых")])
+    add_p(doc, "sign – функция знака: -1, 0, +1", align="center", space_after=8)
+    add_p(doc, "ур. Паскаля: Рж = Рг + ρ*g* H", align="center", italic=True, space_after=10)
+
+    add_p(doc, "Определение скорости потоков жидкости:", size=14, bold=True)
+    for vi, a, b in [
+        ("V1 = k1 * sign (Р1 – Р8) * ", "1", "8"),
+        ("V2 = k2 * sign (Р2 – Р9) * ", "2", "9"),
+        ("V3 = k3 * sign (Р7 – Р8) * ", "7", "8"),
+        ("V4 = k4 * sign (Р8 – Р9) * ", "8", "9"),
+        ("V5 = k5 * sign (Р7 – Р3) * ", "7", "3"),
+        ("V6 = k6 * sign (Р8 – Р4) * ", "8", "4"),
+        ("V7 = k7 * sign (Р8 – Р5) * ", "8", "5"),
+        ("V8 = k8 * sign (Р9 – Р6) * ", "9", "6"),
+    ]:
+        pv = add_p(doc, vi, space_after=3)
+        append_runs(pv, [omml_sqrt_abs(a, b)])
+
+    add_p(doc, "Уравнения массового баланса:", size=14, bold=True, space_before=10)
+    add_p(doc, "9’) (V3 – V5 )/S1= (H1(t(k))- H1(t(o)))/ Δt = f9", space_after=2)
+    add_p(doc, "9*) H1(t(o))= H1(o)", space_after=6)
+    add_p(doc, "10’) (V1 + V3 – V4 – V6 – V7 )/S2= (H2(t(k))- H2(t(o)))/ Δt = f10", space_after=2)
+    add_p(doc, "10*) H2(t(o))= H2(o)", space_after=6)
+    add_p(doc, "11’) (V2 + V4 – V8 )/S3= (H3(t(k))- H3(t(o)))/ Δt = f11", space_after=2)
+    add_p(doc, "11*) H3(t(o))= H3(o)", space_after=8)
 
     add_p(doc, "Определение давлений жидкости и газа в закрытых ёмкостях:", size=14, bold=True, space_before=10)
     for line in [
-        "12)  P10 = PN * Hg1 / (Hg1 – H1)",
-        "13)  P7  = P10 + ρ*g*H1",
-        "14)  P11 = PN * Hg2 / (Hg2 – H2)",
-        "15)  P8  = P11 + ρ*g*H2",
-        "16)  P12 = PN * Hg3 / (Hg3 – H3)",
-        "17)  P9  = P12 + ρ*g*H3",
+        "12) Р7 = Р10 + ρ*g* H1",
+        "13) Р10 = РN * H1G/ (H1G – H1)",
+        "14) Р8 = Р11 + ρ*g* H2",
+        "15) Р11 = РN * H2G/ (H2G – H2)",
+        "16) Р9 = Р12 + ρ*g* H3",
+        "17) Р12 = РN * H3G/ (H3G – H3)",
     ]:
         add_p(doc, line, space_after=3)
 
