@@ -9,7 +9,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mp
-from matplotlib.patches import FancyBboxPatch
 from lxml import etree
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -181,67 +180,110 @@ def draw_matrix(path: Path) -> None:
     plt.close(fig)
 
 
-def box(ax, x, y, w, h, text, fs=9):
-    ax.add_patch(
-        FancyBboxPatch(
-            (x, y), w, h,
-            boxstyle="round,pad=0.02,rounding_size=0.08",
-            fc="#f4f7fb", ec="k", lw=1.15,
-        )
+def _rect(ax, x, y, w, h, text, eq=None, fs=9):
+    """Прямоугольник как в примерной лабе: номер уравнения в углу, переменная в центре."""
+    ax.add_patch(mp.Rectangle((x, y), w, h, fill=False, lw=1.15, ec="k"))
+    ax.text(x + w / 2, y + h / 2 - (0.06 if eq else 0), text, ha="center", va="center", fontsize=fs)
+    if eq is not None:
+        ax.text(x + 0.07, y + h - 0.08, str(eq), ha="left", va="top", fontsize=7)
+    return x, y, w, h
+
+
+def _arrow(ax, x0, y0, x1, y1):
+    ax.annotate(
+        "",
+        xy=(x1, y1),
+        xytext=(x0, y0),
+        arrowprops=dict(arrowstyle="->", lw=1.05, color="k"),
     )
-    ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=fs)
 
 
 def draw_flow(path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(8.6, 10.6))
-    ax.set_xlim(0, 9)
-    ax.set_ylim(0, 10.8)
+    """Блок-схема слева направо, как в примерной лабораторной (не вертикальный цикл)."""
+    fig, ax = plt.subplots(figsize=(16.8, 8.4))
+    ax.set_xlim(0.0, 16.8)
+    ax.set_ylim(0.10, 8.30)
     ax.axis("off")
-    ax.set_title("Блок-схема алгоритма расчётов стационарного режима", fontsize=12)
 
-    def arr(x, y0, y1):
-        ax.annotate("", xy=(x, y1), xytext=(x, y0), arrowprops=dict(arrowstyle="->", lw=1.25))
+    y1, y2, y3 = 6.55, 3.70, 0.90
+    bw, bh = 1.18, 0.72
+    yc = (y1 + y3) / 2 + bh / 2
 
-    cx, w = 2.55, 3.9
-    ax.add_patch(mp.FancyBboxPatch((cx, 9.85), w, 0.65, boxstyle="round,pad=0.03", fc="#e8f5e9", ec="k"))
-    ax.text(cx + w / 2, 10.17, "Старт", ha="center", va="center", fontsize=11, weight="bold")
+    ax.add_patch(mp.Ellipse((0.82, yc), 1.32, 0.82, fill=False, lw=1.2))
+    ax.text(0.82, yc, "СТАРТ", ha="center", va="center", fontsize=10)
 
-    seq = [
-        (8.15, 1.15, "Ввод: P1–P6, k1–k8,\nS, Hg, PN, ρ, g, H1(0), H2(0), H3(0)"),
-        (6.90, 0.80, "13, 12. P10, P7  (ёмкость 1)"),
-        (5.75, 0.80, "15, 14. P11, P8  (ёмкость 2)"),
-        (4.60, 0.80, "17, 16. P12, P9  (ёмкость 3)"),
-        (3.40, 0.85, "1–8. Скорости V1…V8\nпо ур. Бернулли"),
-        (2.15, 0.90, "9'–11'. Невязки балансов\nкоррекция H1, H2, H3"),
-    ]
-    prev = 9.85
-    for y, h, text in seq:
-        box(ax, cx, y, w, h, text, 9)
-        arr(4.5, prev, y + h)
-        prev = y
-
-    dy, dx = 0.40, 0.92
-    y0 = 0.18
-    ax.add_patch(
-        mp.Polygon(
-            [[4.5, y0 + 2 * dy], [4.5 + dx, y0 + dy], [4.5, y0], [4.5 - dx, y0 + dy]],
-            closed=True, fc="#fff8e1", ec="k", lw=1.15,
-        )
-    )
-    ax.text(4.5, y0 + dy, "|f| < ε ?", ha="center", va="center", fontsize=9)
-    arr(4.5, 2.15, y0 + 2 * dy)
-
-    ax.add_patch(mp.FancyBboxPatch((6.6, 0.15), 2.1, 0.78, boxstyle="round,pad=0.03", fc="#e8f5e9", ec="k"))
-    ax.text(7.65, 0.54, "Вывод H, V, P\nСтоп", ha="center", va="center", fontsize=9)
-    ax.annotate("", xy=(6.6, 0.54), xytext=(4.5 + dx, y0 + dy), arrowprops=dict(arrowstyle="->", lw=1.2))
-    ax.text(6.15, 0.88, "да", fontsize=8)
-    ax.annotate(
-        "нет",
-        xy=(6.55, 8.55),
-        xytext=(4.5 - dx, y0 + dy),
+    _rect(ax, 1.65, 1.55, 1.72, 4.70, "")
+    ax.text(
+        2.51,
+        yc,
+        "ВВОД\nP1–P6\nk1–k8\nPN, ρ, g\nH1(o), H2(o), H3(o)\nS1, S2, S3\nH1G, H2G, H3G",
+        ha="center",
+        va="center",
         fontsize=8,
-        arrowprops=dict(arrowstyle="->", lw=1.15, connectionstyle="arc3,rad=-0.42"),
     )
+    _arrow(ax, 1.48, yc, 1.65, yc)
+
+    xh0, xg, xp, xv_cross, xv, xht, xout = 3.55, 4.85, 6.30, 7.75, 9.20, 10.85, 12.60
+
+    for y, lab in ((y1, "H1(o)"), (y2, "H2(o)"), (y3, "H3(o)")):
+        _rect(ax, xh0, y, 1.05, bh, lab, fs=9)
+        _arrow(ax, 3.37, y + bh / 2, xh0, y + bh / 2)
+
+    for y, name, eq in ((y1, "P10", "13"), (y2, "P11", "15"), (y3, "P12", "17")):
+        _rect(ax, xg, y, bw, bh, name, eq=eq)
+        _arrow(ax, xh0 + 1.05, y + bh / 2, xg, y + bh / 2)
+
+    for y, name, eq in ((y1, "P7", "12"), (y2, "P8", "14"), (y3, "P9", "16")):
+        _rect(ax, xp, y, bw, bh, name, eq=eq)
+        _arrow(ax, xg + bw, y + bh / 2, xp, y + bh / 2)
+
+    yv3, yv4 = (y1 + y2) / 2, (y2 + y3) / 2
+    _rect(ax, xv_cross, yv3, bw, bh, "V3", eq="3")
+    _rect(ax, xv_cross, yv4, bw, bh, "V4", eq="4")
+    _arrow(ax, xp + bw, y1 + 0.08, xv_cross, yv3 + bh - 0.06)
+    _arrow(ax, xp + bw, y2 + bh - 0.08, xv_cross, yv3 + 0.06)
+    _arrow(ax, xp + bw, y2 + 0.08, xv_cross, yv4 + bh - 0.06)
+    _arrow(ax, xp + bw, y3 + bh - 0.08, xv_cross, yv4 + 0.06)
+
+    _rect(ax, xv, y1, bw, bh, "V5", eq="5")
+    _arrow(ax, xp + bw, y1 + bh / 2, xv, y1 + bh / 2)
+
+    yv1, yv6, yv7 = y2 + 1.22, y2, y2 - 1.22
+    _rect(ax, xv, yv1, bw, bh, "V1", eq="1")
+    _rect(ax, xv, yv6, bw, bh, "V6", eq="6")
+    _rect(ax, xv, yv7, bw, bh, "V7", eq="7")
+    for yv in (yv1, yv6, yv7):
+        _arrow(ax, xp + bw, y2 + bh / 2, xv, yv + bh / 2)
+
+    yv2, yv8 = y3 + 0.58, y3 - 0.50
+    _rect(ax, xv, yv2, bw, bh, "V2", eq="2")
+    _rect(ax, xv, yv8, bw, bh, "V8", eq="8")
+    _arrow(ax, xp + bw, y3 + bh / 2, xv, yv2 + bh / 2)
+    _arrow(ax, xp + bw, y3 + bh / 2, xv, yv8 + bh / 2)
+
+    _rect(ax, xht, y1, 1.42, bh, "H1(t(k))", eq="9'")
+    _rect(ax, xht, y2, 1.42, bh, "H2(t(k))", eq="10'")
+    _rect(ax, xht, y3, 1.42, bh, "H3(t(k))", eq="11'")
+    _arrow(ax, xv + bw, y1 + bh / 2, xht, y1 + bh / 2)
+    _arrow(ax, xv_cross + bw, yv3 + bh / 2, xht, y1 + 0.10)
+    for yv in (yv1, yv6, yv7):
+        _arrow(ax, xv + bw, yv + bh / 2, xht, y2 + bh / 2)
+    _arrow(ax, xv_cross + bw, yv3 + 0.10, xht, y2 + bh - 0.08)
+    _arrow(ax, xv_cross + bw, yv4 + bh / 2, xht, y2 + 0.10)
+    _arrow(ax, xv + bw, yv2 + bh / 2, xht, y3 + bh - 0.08)
+    _arrow(ax, xv + bw, yv8 + bh / 2, xht, y3 + bh / 2)
+    _arrow(ax, xv_cross + bw, yv4 + 0.10, xht, y3 + bh - 0.08)
+
+    _rect(ax, xout, 2.15, 1.90, 3.55, "")
+    ax.text(xout + 0.95, yc, "ВЫВОД\nH1, H2, H3 (t(k))\nV1–V8\nP7–P12", ha="center", va="center", fontsize=8)
+    _arrow(ax, xht + 1.42, y1 + bh / 2, xout, 5.15)
+    _arrow(ax, xht + 1.42, y2 + bh / 2, xout, yc)
+    _arrow(ax, xht + 1.42, y3 + bh / 2, xout, 2.70)
+
+    ax.add_patch(mp.Ellipse((15.55, yc), 1.38, 0.82, fill=False, lw=1.2))
+    ax.text(15.55, yc, "Стоп", ha="center", va="center", fontsize=10)
+    _arrow(ax, xout + 1.90, yc, 14.86, yc)
+
     fig.tight_layout()
     fig.savefig(path, dpi=170, bbox_inches="tight", facecolor="white")
     plt.close(fig)
@@ -368,7 +410,7 @@ def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     add_p(doc, "Блок-схема алгоритма расчётов стационарного режима гидравлической системы:", size=14, bold=True, space_before=12)
-    doc.add_picture(str(flow), width=Cm(14.5))
+    doc.add_picture(str(flow), width=Cm(16.6))
     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     add_p(
