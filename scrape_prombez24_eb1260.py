@@ -12,6 +12,9 @@ import urllib.request
 from pathlib import Path
 
 OUT = Path("/tmp/prombez24_eb1260.json")
+# V до и выше, спецразделы (дыры ЭБ 1260): 305 выше 6000 В, 364 краны, 311 КЛ,
+# 330 сварка, 337 двигатели, 215 ЭТЛ, 439 электротермия, 444 ТЭП.
+SPEC_TEST_IDS = [305, 364, 311, 330, 337, 215, 439, 444]
 UA = {"User-Agent": "Mozilla/5.0 (compatible; exam-prep-research/1.0)"}
 
 
