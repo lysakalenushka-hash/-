@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Сопоставить ключи бесплатного тренажёра prombez24 (ЭБ 1260.25) с листом V приложения 2 РТН."""
+"""Сопоставить ключи бесплатных тренажёров ЭБ 1260.25 (prombez24 и tests24.su) с листом V приложения 2 РТН."""
 
 from __future__ import annotations
 
@@ -15,7 +15,10 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 RTN_PATH = Path("/tmp/Prilozhenie_2_RTN.xlsx")
-TRAINER_JSON = Path("/tmp/prombez24_eb1260.json")
+TRAINER_FILES = [
+    ("prombez24", Path("/tmp/prombez24_eb1260.json")),
+    ("tests24.su", Path("/tmp/tests24_eb1260.json")),
+]
 OUT = Path("электробезопасность_V_ключи_тренажёр.xlsx")
 
 FONT = Font(name="Times New Roman", size=11)
@@ -127,12 +130,36 @@ def header(ws, titles):
         cell.alignment = ALIGN
 
 
+def load_trainers():
+    merged = {}
+    counts = {}
+    for name, path in TRAINER_FILES:
+        items = json.loads(path.read_text(encoding="utf-8"))
+        counts[name] = len(items)
+        for it in items:
+            rec = {**it, "src": name}
+            key = stem(rec["q"])
+            prev = merged.get(key)
+            n_new = len(rec.get("correct") or [])
+            n_old = len(prev.get("correct") or []) if prev else -1
+            if not prev or n_new > n_old:
+                if prev and prev.get("src") and name not in prev.get("src", ""):
+                    rec["src"] = "prombez24 + tests24.su"
+                    if prev.get("ntd") and not rec.get("ntd"):
+                        rec["ntd"] = prev["ntd"]
+                merged[key] = rec
+            elif prev and name not in (prev.get("src") or ""):
+                prev["src"] = "prombez24 + tests24.su"
+    return list(merged.values()), counts
+
+
 def main():
     rtn = parse_rtn_v()
-    trainer = json.loads(TRAINER_JSON.read_text(encoding="utf-8"))
+    trainer, src_counts = load_trainers()
     keyed_rows = []
     missing_rows = []
     how_c = {"exact": 0, "stem": 0, "fuzzy": 0, "miss": 0}
+    src_hit = {}
     keyed = 0
     for idx, q in enumerate(rtn, 1):
         hit, sc, how = best_match(q["q"], trainer)
@@ -141,6 +168,8 @@ def main():
         ok = sum(flags) > 0
         if ok:
             keyed += 1
+            src = hit.get("src", "") if hit else ""
+            src_hit[src] = src_hit.get(src, 0) + 1
             keyed_rows.append(
                 {
                     "idx": idx,
@@ -155,6 +184,7 @@ def main():
                     "v1000": q["v1000"],
                     "v_above": q["v_above"],
                     "ntd": hit.get("ntd", "") if hit else "",
+                    "src": src,
                 }
             )
         else:
@@ -175,16 +205,25 @@ def main():
     ws.title = "Сводка"
     header(ws, ["Показатель", "Значение"])
     rows = [
-        ("Источник ключей", "Бесплатный последовательный тренажёр prombez24.com/tests/212 (ЭБ 1260.25, V до и выше 1000 В). В HTML страниц /ticket/ordered ключ уже размечен полем correct=true."),
+        (
+            "Источник ключей",
+            "1) prombez24.com/tests/212 — последовательные страницы /ticket/ordered, поле correct=true. "
+            "2) tests24.su — все 42 билета ЭБ 1260.25 сданы через WatuPRO (action=watupro_submit), ключ в классе correct-answer.",
+        ),
         ("Банк вопросов", "Приложение 2 РТН, лист V, промышленные потребители, 701 вопрос."),
-        ("Вопросов в тренажёре", len(trainer)),
+        ("Вопросов в тренажёре prombez24", src_counts.get("prombez24", 0)),
+        ("Вопросов в билетах tests24.su", src_counts.get("tests24.su", 0)),
         ("Совпало с РТН и проставлен ключ", keyed),
+        ("Разбивка по сайтам", "; ".join(f"{k}: {v}" for k, v in sorted(src_hit.items())) or "—"),
         ("Без ключа (нет в бесплатном банке)", len(missing_rows)),
         ("Точное совпадение формулировки", how_c["exact"]),
         ("Совпадение без хвоста «согласно НПА»", how_c["stem"]),
         ("Нечёткое совпадение (опечатки РТН)", how_c["fuzzy"]),
         ("Нет пары", how_c["miss"]),
-        ("Случайный тренажёр 10 вопросов (24тест.рф)", "Не даёт полного покрытия: ~280 вопросов РТН в бесплатном последовательном банке нет. Повтор случайных билетов не «запоминает» недостающие."),
+        (
+            "Что даёт tests24 сверх prombez24",
+            "Тот же курс ЭБ 1260.25, банк почти совпадает. Новые ключи к недостающим 281 вопросам РТН tests24 не добавляет.",
+        ),
         ("Память чата", "Ключи хранятся в этом файле, а не в контексте диалога."),
     ]
     for i, (a, b) in enumerate(rows, 2):
@@ -192,7 +231,7 @@ def main():
         ws.cell(i, 2, b).font = FONT
         ws.cell(i, 1).alignment = ALIGN
         ws.cell(i, 2).alignment = ALIGN
-        ws.row_dimensions[i].height = 36 if i in (2, 10, 11) else 22
+        ws.row_dimensions[i].height = 48 if i in (2, 15, 16) else 22
     autosize(ws, [42, 110])
     ws.row_dimensions[1].height = 22
 
@@ -209,6 +248,7 @@ def main():
             "Сходство",
             "До 1000 В",
             "Выше 1000 В",
+            "Сайт",
             "Ссылка НПА в тренажёре",
         ],
     )
@@ -223,6 +263,7 @@ def main():
             round(r["sc"], 3),
             "+" if r["v1000"] else "",
             "+" if r["v_above"] else "",
+            r.get("src", ""),
             r["ntd"],
         ]
         for c, v in enumerate(vals, 1):
@@ -232,7 +273,7 @@ def main():
             if c == 5:
                 cell.fill = FILL_OK
         ws_k.row_dimensions[i].height = 48
-    autosize(ws_k, [12, 12, 40, 70, 70, 12, 12, 12, 14, 40])
+    autosize(ws_k, [12, 12, 40, 70, 70, 12, 12, 12, 14, 28, 40])
 
     ws_m = wb.create_sheet("Без ключа")
     header(ws_m, ["№ п/п РТН", "№ в разделе", "НПА", "Вопрос", "Лучшее сходство с тренажёром", "До 1000 В", "Выше 1000 В"])
@@ -275,7 +316,7 @@ def main():
     print(
         f"saved {OUT} rtn={len(rtn)} trainer={len(trainer)} keyed={keyed} "
         f"missing={len(missing_rows)} exact={how_c['exact']} stem={how_c['stem']} "
-        f"fuzzy={how_c['fuzzy']} miss={how_c['miss']}"
+        f"fuzzy={how_c['fuzzy']} miss={how_c['miss']} src={src_hit}"
     )
 
 
