@@ -10,6 +10,7 @@ import re
 from difflib import SequenceMatcher
 from pathlib import Path
 
+from docx import Document
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
@@ -18,6 +19,16 @@ RTN_PATH = Path("/tmp/Prilozhenie_2_RTN.xlsx")
 TRAINER_FILES = [
     ("prombez24", Path("/tmp/prombez24_eb1260.json")),
     ("tests24.su", Path("/tmp/tests24_eb1260.json")),
+]
+DOCX_FILES = [
+    (
+        "24тест V выше 1000",
+        Path("/home/ubuntu/.cursor/projects/workspace/uploads/PT_PR_1_5_01_09_2026v2_NTD_8e0d.docx"),
+    ),
+    (
+        "24тест IV до 1000",
+        Path("/home/ubuntu/.cursor/projects/workspace/uploads/PT_PR_0_4_01_09_2026v2_NTD_f473.docx"),
+    ),
 ]
 OUT = Path("электробезопасность_V_ключи_тренажёр.xlsx")
 
@@ -130,26 +141,56 @@ def header(ws, titles):
         cell.alignment = ALIGN
 
 
+def parse_24test_docx(path: Path) -> list[dict]:
+    doc = Document(str(path))
+    qs = []
+    for table in doc.tables:
+        rows = [r.cells[0].text.strip() for r in table.rows]
+        if len(rows) < 4:
+            continue
+        q = rows[1].strip()
+        corr = re.sub(r"^Правильный ответ:\s*", "", rows[3], flags=re.I).strip()
+        ntd = rows[4].strip() if len(rows) > 4 else ""
+        if not q or not corr:
+            continue
+        qs.append({"q": q, "correct": [corr], "ntd": ntd, "opts": []})
+    return qs
+
+
+def join_src(prev: str, name: str) -> str:
+    parts = [p.strip() for p in (prev or "").split("+") if p.strip()]
+    if name not in parts:
+        parts.append(name)
+    return " + ".join(parts)
+
+
 def load_trainers():
     merged = {}
     counts = {}
-    for name, path in TRAINER_FILES:
-        items = json.loads(path.read_text(encoding="utf-8"))
+
+    def ingest(name: str, items: list[dict]):
         counts[name] = len(items)
         for it in items:
             rec = {**it, "src": name}
             key = stem(rec["q"])
             prev = merged.get(key)
-            n_new = len(rec.get("correct") or [])
-            n_old = len(prev.get("correct") or []) if prev else -1
+            n_new = len([c for c in (rec.get("correct") or []) if c])
+            n_old = len([c for c in (prev.get("correct") or []) if c]) if prev else -1
             if not prev or n_new > n_old:
-                if prev and prev.get("src") and name not in prev.get("src", ""):
-                    rec["src"] = "prombez24 + tests24.su"
+                if prev:
+                    rec["src"] = join_src(prev.get("src", ""), name)
                     if prev.get("ntd") and not rec.get("ntd"):
                         rec["ntd"] = prev["ntd"]
                 merged[key] = rec
-            elif prev and name not in (prev.get("src") or ""):
-                prev["src"] = "prombez24 + tests24.su"
+            elif prev:
+                prev["src"] = join_src(prev.get("src", ""), name)
+
+    for name, path in TRAINER_FILES:
+        if path.exists():
+            ingest(name, json.loads(path.read_text(encoding="utf-8")))
+    for name, path in DOCX_FILES:
+        if path.exists():
+            ingest(name, parse_24test_docx(path))
     return list(merged.values()), counts
 
 
@@ -207,23 +248,21 @@ def main():
     rows = [
         (
             "Источник ключей",
-            "1) prombez24.com/tests/212 — последовательные страницы /ticket/ordered, поле correct=true. "
-            "2) tests24.su — все 42 билета ЭБ 1260.25 сданы через WatuPRO (action=watupro_submit), ключ в классе correct-answer.",
+            "Бесплатные тренажёры prombez24 и tests24.su (ЭБ 1260.25) плюс купленные дампы 24тест.рф: "
+            "PT_PR_1_5 (V выше 1000 В) и PT_PR_0_4 (IV до 1000 В) от 01.09.2026v2.",
         ),
         ("Банк вопросов", "Приложение 2 РТН, лист V, промышленные потребители, 701 вопрос."),
         ("Вопросов в тренажёре prombez24", src_counts.get("prombez24", 0)),
         ("Вопросов в билетах tests24.su", src_counts.get("tests24.su", 0)),
+        ("Вопросов в дампе 24тест V выше 1000", src_counts.get("24тест V выше 1000", 0)),
+        ("Вопросов в дампе 24тест IV до 1000", src_counts.get("24тест IV до 1000", 0)),
         ("Совпало с РТН и проставлен ключ", keyed),
-        ("Разбивка по сайтам", "; ".join(f"{k}: {v}" for k, v in sorted(src_hit.items())) or "—"),
-        ("Без ключа (нет в бесплатном банке)", len(missing_rows)),
+        ("Разбивка по источникам (уникальные совпадения РТН)", "; ".join(f"{k}: {v}" for k, v in sorted(src_hit.items(), key=lambda x: -x[1])) or "—"),
+        ("Без ключа", len(missing_rows)),
         ("Точное совпадение формулировки", how_c["exact"]),
         ("Совпадение без хвоста «согласно НПА»", how_c["stem"]),
         ("Нечёткое совпадение (опечатки РТН)", how_c["fuzzy"]),
         ("Нет пары", how_c["miss"]),
-        (
-            "Что даёт tests24 сверх prombez24",
-            "Тот же курс ЭБ 1260.25, банк почти совпадает. Новые ключи к недостающим 281 вопросам РТН tests24 не добавляет.",
-        ),
         ("Память чата", "Ключи хранятся в этом файле, а не в контексте диалога."),
     ]
     for i, (a, b) in enumerate(rows, 2):
