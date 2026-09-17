@@ -25,6 +25,56 @@ USER_SCHEME = Path(
     "/home/ubuntu/.cursor/projects/workspace/assets/e7e088f7-1bd5-40fb-9fad-cd36bb97a557.png"
 )
 
+MATLAB_FUN = r"""function F=fpr(t,h)
+global ro pn p ak hg g v s
+p(10) = pn * hg(1) / (hg(1) - h(1));
+p(7)  = p(10) + ro * g * h(1);
+p(11) = pn * hg(2) / (hg(2) - h(2));
+p(8)  = p(11) + ro * g * h(2);
+p(12) = pn * hg(3) / (hg(3) - h(3));
+p(9)  = p(12) + ro * g * h(3);
+v(1) = ak(1) * sign(p(1) - p(8)) * sqrt(abs(p(1) - p(8)));
+v(2) = ak(2) * sign(p(2) - p(9)) * sqrt(abs(p(2) - p(9)));
+v(3) = ak(3) * sign(p(7) - p(8)) * sqrt(abs(p(7) - p(8)));
+v(4) = ak(4) * sign(p(8) - p(9)) * sqrt(abs(p(8) - p(9)));
+v(5) = ak(5) * sign(p(7) - p(3)) * sqrt(abs(p(7) - p(3)));
+v(6) = ak(6) * sign(p(8) - p(4)) * sqrt(abs(p(8) - p(4)));
+v(7) = ak(7) * sign(p(8) - p(5)) * sqrt(abs(p(8) - p(5)));
+v(8) = ak(8) * sign(p(9) - p(6)) * sqrt(abs(p(9) - p(6)));
+F=[(-v(3)-v(5))/s(1);
+   (v(1)+v(3)-v(4)-v(6)-v(7))/s(2);
+   (v(2)+v(4)-v(8))/s(3)];
+end"""
+
+MATLAB_MAIN = r"""clc
+global ro pn p ak hg g s
+np=12; nk=8; nv=17; s=[1,1,1]; g=9.815;
+disp ('Высота емкостей'); hg=[10,10,10];
+disp ('плотность (кг/м3)'); ro=1000;
+disp ('Начальное давление (Па)'); pn=100000;
+disp ('Площадь внутреннего проходного сечения трубопровода (м^2)'); S=0.01;
+disp ('Давление (1-6 известны, 7-12 считаются)');
+p=[1000000, 1000000, 100000, 100000, 100000, 100000, 0, 0, 0, 0, 0, 0];
+disp ('Коэф. пропускной способности (1-8)'); k=[0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01];
+t0=0; tk=10000; dt=1;
+t=[t0:dt:tk];
+H10=0; H20=0; H30=0;
+Y0=[H10;H20;H30];
+for i=1:length(k)
+ak(i)=k(i)*S/sqrt(ro);
+end
+[T,Y]=ode45(@fpr,t,Y0);
+plot(T,Y(:,1),'r.:')
+hold on
+plot(T,Y(:,2),'y.:')
+plot(T,Y(:,3),'k.:')
+title('Solver gidravlika-dinamika, variant 4')
+xlabel('\itt')
+ylabel('{\ith1}, {\ith2}, {\ith3}')
+legend('h1','h2','h3')
+hold off
+disp('Завершение моделирования')"""
+
 
 def set_run_font(run, name="Times New Roman", size=14, bold=False, italic=False):
     run.font.name = name
@@ -76,7 +126,7 @@ def _mr(text, *, sub=False):
 
 def omml_sqrt_abs(left: str, right: str):
     """√|Pleft − Pright| — как в примерной лабораторной (формула Word)."""
-    omath = etree.Element("{%s}oMath" % M_NS)
+    omath = etree.Element("{%s}oMath" % M_NS, nsmap={"m": M_NS})
     omath.append(_mr("√"))
     d = etree.SubElement(omath, "{%s}d" % M_NS)
     dpr = etree.SubElement(d, "{%s}dPr" % M_NS)
@@ -91,7 +141,7 @@ def omml_sqrt_abs(left: str, right: str):
 
 
 def omml_pn():
-    omath = etree.Element("{%s}oMath" % M_NS)
+    omath = etree.Element("{%s}oMath" % M_NS, nsmap={"m": M_NS})
     ssup = etree.SubElement(omath, "{%s}sSup" % M_NS)
     e = etree.SubElement(ssup, "{%s}e" % M_NS)
     e.append(_mr("Р"))
@@ -291,7 +341,6 @@ def draw_flow(path: Path) -> None:
 
 def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
     doc = Document()
-    doc.element.set("{http://www.w3.org/2000/xmlns/}m", M_NS)
     sec = doc.sections[0]
     sec.top_margin = Cm(2)
     sec.bottom_margin = Cm(2)
@@ -413,12 +462,15 @@ def build_doc(scheme: Path, matrix: Path, flow: Path) -> None:
     doc.add_picture(str(flow), width=Cm(16.6))
     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    add_p(
-        doc,
-        "Компьютерная программа на языке MATLAB в данную лабораторную работу не входит.",
-        italic=True,
-        space_before=12,
-    )
+    add_p(doc, "Компьютерная программа на языке MATLAB для расчёта стационарного режима гидравлической системы:", size=14, bold=True, space_before=12)
+    add_p(doc, "Функция:", size=14, bold=True, space_before=8)
+    for line in MATLAB_FUN.splitlines():
+        add_p(doc, line if line else " ", size=11, space_after=0)
+        set_run_font(doc.paragraphs[-1].runs[0], name="Courier New", size=11)
+    add_p(doc, "Программа:", size=14, bold=True, space_before=10)
+    for line in MATLAB_MAIN.splitlines():
+        add_p(doc, line if line else " ", size=11, space_after=0)
+        set_run_font(doc.paragraphs[-1].runs[0], name="Courier New", size=11)
 
     doc.save(DOCX)
 
@@ -431,6 +483,8 @@ def main() -> None:
     flow = OUT_DIR / "блок_схема.png"
     draw_matrix(matrix)
     draw_flow(flow)
+    (OUT_DIR / "fpr.m").write_text(MATLAB_FUN + "\n", encoding="utf-8")
+    (OUT_DIR / "lab1_variant4.m").write_text(MATLAB_MAIN + "\n", encoding="utf-8")
     build_doc(scheme, matrix, flow)
     print("saved", DOCX.resolve())
 
