@@ -103,6 +103,13 @@ CSTR_SERIES = {
 # л/р №3, единичные, n1 = n2 = 1, τ = 2 мин
 SINGLE_CSTR = (2.0, 0.5454, 0.3030, 0.2424)
 SINGLE_PFR = (2.0, 0.6988, 0.4444, 0.2544)
+# выходы четырёх РИВ в ряду (τi = 0,5 мин), X Y Z
+PFR_SERIES_OUT = [
+    (0.2592, 0.2337, 0.0254),
+    (0.4512, 0.3645, 0.0867),
+    (0.5934, 0.4267, 0.1667),
+    (0.6988, 0.4444, 0.2544),
+]
 
 
 def cstr_from_inlet(tau, ca_in, cr_in, cs_in):
@@ -156,6 +163,33 @@ def write_scheme(ws, r0, text):
     cell.alignment = Alignment(vertical="center", wrap_text=True)
     ws.row_dimensions[r0].height = 24
     return r0 + 1
+
+
+def write_subst(ws, r0, title, x, y, z):
+    """Три строки CA, CR, CS с подстановкой, как просит отчёт."""
+    r0 = write_punkt(ws, r0, title)
+    for i, h in enumerate(
+        ["Величина", "Формула", "С экрана", "Подстановка", "Результат, моль/л"],
+        1,
+    ):
+        style_header(ws.cell(r0, i, h))
+    ws.row_dimensions[r0].height = 24
+    lines = [
+        ("CA, моль/л", "CA0·(1−X)", f"X = {x:.4f}".replace(".", ","),
+         f"30·(1−{x:.4f})".replace(".", ","), CA0 * (1.0 - x)),
+        ("CR, моль/л", "CA0·Y", f"Y = {y:.4f}".replace(".", ","),
+         f"30·{y:.4f}".replace(".", ","), CA0 * y),
+        ("CS, моль/л", "CA0·Z", f"Z = {z:.4f}".replace(".", ","),
+         f"30·{z:.4f}".replace(".", ","), CA0 * z),
+    ]
+    for i, (a, b, c, d, e) in enumerate(lines):
+        style_cell(ws.cell(r0 + 1 + i, 1, a))
+        style_cell(ws.cell(r0 + 1 + i, 2, b))
+        style_cell(ws.cell(r0 + 1 + i, 3, c))
+        style_cell(ws.cell(r0 + 1 + i, 4, d))
+        cell = ws.cell(r0 + 1 + i, 5, e)
+        style_cell(cell, CONC_FMT)
+    return r0 + 5
 
 
 def write_block(ws, r0, title, rows):
@@ -234,95 +268,47 @@ def build():
     for rr in (4, 5, 6, 7):
         w1.row_dimensions[rr].height = 20
 
-    write_punkt(w1, 9, "Пример подстановки. Система 1, выход 1-го РИС-н (X, Y, Z с экрана):")
-    for i, h in enumerate(
-        ["Величина", "Формула", "X, Y, Z с экрана", "Подстановка", "CA, CR, CS, моль/л"],
+    subst_blocks = [
+        ("Реактор 1, вход (τ = 0; с экрана):", 0.0000, 0.0000, 0.0000),
+        ("Реактор 1, выход (τ = 0,5; с экрана):", 0.2308, 0.1923, 0.0385),
+        ("Реактор 2, вход (τ = 0; с экрана):", 0.2308, 0.1923, 0.0385),
+        ("Реактор 2, выход (τ = 0,5; с экрана):", 0.4083, 0.3082, 0.1001),
+        ("Реактор 3, вход (τ = 0; с экрана):", 0.4083, 0.3082, 0.1001),
+        ("Реактор 3, выход (τ = 0,5; с экрана):", 0.5448, 0.3706, 0.1742),
+        ("Реактор 4, вход (τ = 0; с экрана):", 0.5448, 0.3706, 0.1742),
+        ("Реактор 4, выход (τ = 0,5; выход системы 1, с экрана):", 0.6498, 0.3964, 0.2535),
+        (
+            "Система 2, каждый из 4 параллельных РИС-н / выход (τi = 2 мин):",
+            SINGLE_CSTR[1], SINGLE_CSTR[2], SINGLE_CSTR[3],
+        ),
+        ("Система 3, выход 1-го РИВ (τi = 0,5 мин):", *PFR_SERIES_OUT[0]),
+        ("Система 3, выход 2-го РИВ:", *PFR_SERIES_OUT[1]),
+        ("Система 3, выход 3-го РИВ:", *PFR_SERIES_OUT[2]),
+        ("Система 3, выход 4-го РИВ — выход системы:", *PFR_SERIES_OUT[3]),
+        (
+            "Система 4, каждый из 4 параллельных РИВ / выход (τi = 2 мин):",
+            SINGLE_PFR[1], SINGLE_PFR[2], SINGLE_PFR[3],
+        ),
+    ]
+    r = 9
+    for title, x, y, z in subst_blocks:
+        r = write_subst(w1, r, title, x, y, z) + 1
+
+    w1.merge_cells(start_row=r, start_column=1, end_row=r + 2, end_column=8)
+    w1.cell(
+        r,
         1,
-    ):
-        style_header(w1.cell(10, i, h))
-    w1.row_dimensions[10].height = 28
-    x0, y0, z0 = 0.2308, 0.1923, 0.0385
-    examples = [
-        ("CA, моль/л", "CA0·(1−X)", f"X = {x0}", f"30·(1−{x0})", CA0 * (1 - x0)),
-        ("CR, моль/л", "CA0·Y", f"Y = {y0}", f"30·{y0}", CA0 * y0),
-        ("CS, моль/л", "CA0·Z", f"Z = {z0}", f"30·{z0}", CA0 * z0),
-    ]
-    for i, (a, b, c, d, e) in enumerate(examples):
-        style_cell(w1.cell(11 + i, 1, a))
-        style_cell(w1.cell(11 + i, 2, b))
-        style_cell(w1.cell(11 + i, 3, c))
-        style_cell(w1.cell(11 + i, 4, d))
-        cell = w1.cell(11 + i, 5, e)
-        style_cell(cell, CONC_FMT)
+        "Проверка: CA + CR + CS = CA0, то есть (1−X) + Y + Z = 1. "
+        "Расхождения в 0,01 моль/л — округление X, Y, Z на экране. "
+        "Дальше все таблицы пункта 2 считаются этими же формулами.",
+    ).alignment = Alignment(wrap_text=True, vertical="top")
+    w1.cell(r, 1).font = Font(name="Calibri", size=12)
 
-    write_punkt(
-        w1,
-        15,
-        "Реальные концентрации на выходе каждого реактора (те же формулы, X Y Z с экрана / модели):",
-    )
-    headers = [
-        "Схема / аппарат",
-        "τ, мин",
-        "X",
-        "Y",
-        "Z",
-        "CA, моль/л",
-        "CR, моль/л",
-        "CS, моль/л",
-    ]
-    for i, h in enumerate(headers, 1):
-        style_header(w1.cell(16, i, h))
-    w1.row_dimensions[16].height = 28
-
-    # выходы аппаратов
-    rows_out = [
-        ("Вход в систему", 0.0, 0.0, 0.0, 0.0),
-        ("1. 4 РИС-н в ряду, реактор 1", 0.5, *CSTR_SERIES[1][-1][1:]),
-        ("1. 4 РИС-н в ряду, реактор 2", 0.5, *CSTR_SERIES[2][-1][1:]),
-        ("1. 4 РИС-н в ряду, реактор 3", 0.5, *CSTR_SERIES[3][-1][1:]),
-        ("1. 4 РИС-н в ряду, реактор 4 (выход системы)", 0.5, *CSTR_SERIES[4][-1][1:]),
-        ("2. 4 РИС-н параллельно, каждый / выход", 2.0, SINGLE_CSTR[1], SINGLE_CSTR[2], SINGLE_CSTR[3]),
-        ("3. 4 РИВ в ряду, выход системы", 2.0, SINGLE_PFR[1], SINGLE_PFR[2], SINGLE_PFR[3]),
-        ("4. 4 РИВ параллельно, каждый / выход", 2.0, SINGLE_PFR[1], SINGLE_PFR[2], SINGLE_PFR[3]),
-    ]
-    for i, (name, tau, x, y, z) in enumerate(rows_out):
-        ca, cr, cs = CA0 * (1 - x), CA0 * y, CA0 * z
-        vals = [name, tau, x, y, z, ca, cr, cs]
-        fmts = [None, "0.00", NUM_FMT, NUM_FMT, NUM_FMT, CONC_FMT, CONC_FMT, CONC_FMT]
-        for j, (v, fmt) in enumerate(zip(vals, fmts), 1):
-            cell = w1.cell(17 + i, j, v)
-            style_cell(cell, fmt)
-            if j == 1:
-                cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
-        if i == 0:
-            for j in range(1, 9):
-                w1.cell(17 + i, j).fill = PatternFill("solid", fgColor="F2F2F2")
-        if i == 4:
-            for j in range(1, 9):
-                w1.cell(17 + i, j).fill = PatternFill("solid", fgColor="FFF2CC")
-        if i in (6, 7):
-            for j in range(1, 9):
-                w1.cell(17 + i, j).fill = PatternFill("solid", fgColor="E2EFDA")
-        w1.row_dimensions[17 + i].height = 22
-
-    w1.merge_cells("A26:H28")
-    w1["A26"] = (
-        "Проверка материального баланса: CA + CR + CS = CA0, то есть (1−X) + Y + Z = 1. "
-        "Для выхода 1-го РИС-н: (1−0,2308)+0,1923+0,0385 = 1,0000. "
-        "Для выхода системы 1: (1−0,6498)+0,3964+0,2535 = 1,0001 (округление экрана). "
-        "Дальше все таблицы пункта 2 считаются этими же формулами."
-    )
-    w1["A26"].alignment = Alignment(wrap_text=True, vertical="top")
-    w1["A26"].font = Font(name="Calibri", size=12)
-    w1.row_dimensions[26].height = 36
-    w1.row_dimensions[27].height = 20
-    w1.row_dimensions[28].height = 20
-
-    set_widths(w1, [48, 12, 12, 12, 12, 16, 16, 16])
+    set_widths(w1, [48, 18, 18, 22, 22, 16, 16, 16])
     w1.page_setup.orientation = "landscape"
     w1.page_setup.fitToPage = True
     w1.page_setup.fitToWidth = 1
-    w1.page_setup.fitToHeight = 1
+    w1.page_setup.fitToHeight = 0
 
     # ========== п. 2 ==========
     w2 = wb.create_sheet("2. Таблицы")
