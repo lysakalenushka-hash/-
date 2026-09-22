@@ -319,8 +319,7 @@ def build():
         "одинаковая нагрузка (vi = 12,5 л/мин, τi = 2 мин).",
     )
     r += 1
-    for i in range(1, 5):
-        r = write_block(w2, r, f"Реактор {i}", rows_cstr_par) + 2
+    r = write_block(w2, r, "Реакторы 1–4 (одинаковые)", rows_cstr_par) + 2
 
     r = write_scheme(
         w2,
@@ -339,8 +338,7 @@ def build():
         "одинаковая нагрузка (vi = 12,5 л/мин, τi = 2 мин).",
     )
     r += 1
-    for i in range(1, 5):
-        r = write_block(w2, r, f"Реактор {i}", rows_pfr_par) + 2
+    r = write_block(w2, r, "Реакторы 1–4 (одинаковые)", rows_pfr_par) + 2
 
     set_widths(w2, widths7)
     w2.page_setup.orientation = "landscape"
