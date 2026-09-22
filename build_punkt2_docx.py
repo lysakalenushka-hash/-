@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Пункт 2. Таблицы моделирования по четырём системам, вариант 2."""
+"""Пункт 2. Четыре таблицы, как на экране: τ = 0 и τ = 0,5."""
 
 from __future__ import annotations
 
-import math
+import shutil
 from pathlib import Path
 
 from docx import Document
@@ -15,44 +15,35 @@ from docx.shared import Cm, Pt, RGBColor
 
 OUT_DIR = Path("/workspace/reaktory_sistemy_variant2")
 CA0 = 30.0
-K1, K2 = 0.6, 0.4
 
-# Одна таблица на систему. Для каскада РИС-н — уникальные состояния по Στ.
-ROWS_CSTR_SER = [
-    (0.0, 0.0000, 0.0000, 0.0000),
-    (0.5, 0.2308, 0.1923, 0.0385),
-    (1.0, 0.4083, 0.3082, 0.1001),
-    (1.5, 0.5448, 0.3706, 0.1742),
-    (2.0, 0.6498, 0.3964, 0.2535),
+# Как на экране: две строки — вход (τ = 0) и выход (τ = 0,5).
+# Выход — системы целиком (последний аппарат / смешение параллели).
+TABLES = [
+    (
+        "Таблица 1. Система 1 — четыре РИС-н последовательно",
+        "Vi = 25 л, vi = 50 л/мин, τi = 0,5 мин. Две строки с экрана: вход системы и выход реактора 4.",
+        (0.0, 0.0000, 0.0000, 0.0000),
+        (0.5, 0.6498, 0.3964, 0.2535),
+    ),
+    (
+        "Таблица 2. Система 2 — четыре РИС-н параллельно",
+        "Vi = 25 л, vi = 12,5 л/мин. Аппараты одинаковы. На экране те же две строки; выход как у единичного РИС-н.",
+        (0.0, 0.0000, 0.0000, 0.0000),
+        (0.5, 0.5454, 0.3030, 0.2424),
+    ),
+    (
+        "Таблица 3. Система 3 — четыре РИВ последовательно",
+        "Vi = 25 л, vi = 50 л/мин, τi = 0,5 мин. Вход системы и выход реактора 4.",
+        (0.0, 0.0000, 0.0000, 0.0000),
+        (0.5, 0.6988, 0.4444, 0.2544),
+    ),
+    (
+        "Таблица 4. Система 4 — четыре РИВ параллельно",
+        "Vi = 25 л, vi = 12,5 л/мин. Аппараты одинаковы. Выход как у единичного РИВ.",
+        (0.0, 0.0000, 0.0000, 0.0000),
+        (0.5, 0.6988, 0.4444, 0.2544),
+    ),
 ]
-ROWS_CSTR_PAR = [(0.0, 0.0000, 0.0000, 0.0000), (2.0, 0.5454, 0.3030, 0.2424)]
-
-
-def xyz_from_c(ca, cr, cs):
-    return 1.0 - ca, cr, cs
-
-
-def pfr_step(tau, ca_in, cr_in, cs_in):
-    if tau == 0:
-        return ca_in, cr_in, cs_in
-    ca = ca_in * math.exp(-K1 * tau)
-    cr = cr_in * math.exp(-K2 * tau) + (K1 / (K2 - K1)) * ca_in * (
-        math.exp(-K1 * tau) - math.exp(-K2 * tau)
-    )
-    cs = ca_in + cr_in + cs_in - ca - cr
-    return ca, cr, cs
-
-
-def pfr_profile(tau_max, n_steps, ca_in=1.0, cr_in=0.0, cs_in=0.0):
-    rows = []
-    last = (ca_in, cr_in, cs_in)
-    for i in range(n_steps + 1):
-        t = round(tau_max * i / n_steps, 4)
-        ca, cr, cs = pfr_step(t, ca_in, cr_in, cs_in)
-        x, y, z = xyz_from_c(ca, cr, cs)
-        rows.append((t, round(x, 4), round(y, 4), round(z, 4)))
-        last = (ca, cr, cs)
-    return rows, last[0], last[1], last[2]
 
 
 def rec(tau, x, y, z):
@@ -119,34 +110,18 @@ def fill_cell(cell, text, bold=False, size=11, fill=None, color=None):
         shade(cell, fill)
 
 
-def add_table(doc, rows, highlight_last=True):
-    headers = [
-        "τ, мин",
-        "X",
-        "Y",
-        "Z",
-        "CA, моль/л",
-        "CR, моль/л",
-        "CS, моль/л",
-    ]
-    tbl = doc.add_table(rows=1 + len(rows), cols=7)
+def add_table(doc, inlet, outlet):
+    headers = ["τ, мин", "X", "Y", "Z", "CA, моль/л", "CR, моль/л", "CS, моль/л"]
+    tbl = doc.add_table(rows=3, cols=7)
     tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
     tbl.autofit = True
     for j, h in enumerate(headers):
         fill_cell(tbl.rows[0].cells[j], h, bold=True, size=11, fill="1F4E79", color=(255, 255, 255))
-    for i, raw in enumerate(rows):
+    for i, raw in enumerate((inlet, outlet)):
         tau, x, y, z, ca, cr, cs = rec(*raw)
-        vals = [
-            comma(tau, 2),
-            comma(x, 4),
-            comma(y, 4),
-            comma(z, 4),
-            comma(ca, 2),
-            comma(cr, 2),
-            comma(cs, 2),
-        ]
-        last = highlight_last and i == len(rows) - 1
-        fill = "FFF2CC" if last else ("D6EAF8" if i % 2 else "FFFFFF")
+        vals = [comma(tau, 2), comma(x, 4), comma(y, 4), comma(z, 4), comma(ca, 2), comma(cr, 2), comma(cs, 2)]
+        last = i == 1
+        fill = "FFF2CC" if last else "FFFFFF"
         for j, v in enumerate(vals):
             fill_cell(tbl.rows[i + 1].cells[j], v, bold=last, size=11, fill=fill)
     doc.add_paragraph()
@@ -154,8 +129,6 @@ def add_table(doc, rows, highlight_last=True):
 
 
 def build():
-    rows_pfr, *_ = pfr_profile(2.0, 10, 1.0, 0.0, 0.0)
-
     doc = Document()
     for sec in doc.sections:
         sec.page_width = Cm(29.7)
@@ -169,52 +142,21 @@ def build():
     add_p(doc, "Пункт 2. Таблицы результатов моделирования", size=16, bold=True, space_after=8)
     add_p(
         doc,
-        "Четыре исследуемые системы — четыре таблицы. "
-        "CA0 = 30 моль/л: CA = 30·(1−X), CR = 30·Y, CS = 30·Z. "
-        "τ — время пребывания по системе. Жёлтая строка — выход системы.",
+        "Четыре системы — четыре таблицы. На экране у каждой две строки: τ = 0 (вход) и τ = 0,5 мин (выход). "
+        "CA0 = 30 моль/л: CA = 30·(1−X), CR = 30·Y, CS = 30·Z. Жёлтая строка — выход.",
         size=12,
         space_after=10,
     )
 
-    add_p(doc, "Таблица 1. Система 1 — четыре РИС-н последовательно", size=14, bold=True, color=(31, 78, 121), space_before=6)
-    add_p(
-        doc,
-        "Vi = 25 л, vi = 50 л/мин, τi = 0,5 мин. Строки: вход и выходы реакторов 1–4 (с экрана программы).",
-        size=12,
-    )
-    add_table(doc, ROWS_CSTR_SER)
-
-    add_p(doc, "Таблица 2. Система 2 — четыре РИС-н параллельно", size=14, bold=True, color=(31, 78, 121), space_before=8)
-    add_p(
-        doc,
-        "Vi = 25 л, vi = 12,5 л/мин, τi = 2 мин. Аппараты одинаковы, таблица одна.",
-        size=12,
-    )
-    add_table(doc, ROWS_CSTR_PAR)
-
-    add_p(doc, "Таблица 3. Система 3 — четыре РИВ последовательно", size=14, bold=True, color=(31, 78, 121), space_before=8)
-    add_p(
-        doc,
-        "Vi = 25 л, vi = 50 л/мин, Στ = 2 мин. Четыре РИВ в ряду эквивалентны одному РИВ того же Στ.",
-        size=12,
-    )
-    add_table(doc, rows_pfr)
-
-    add_p(doc, "Таблица 4. Система 4 — четыре РИВ параллельно", size=14, bold=True, color=(31, 78, 121), space_before=8)
-    add_p(
-        doc,
-        "Vi = 25 л, vi = 12,5 л/мин, τi = 2 мин. Выход совпадает с таблицей 3 (единичный РИВ, л/р №3).",
-        size=12,
-    )
-    add_table(doc, rows_pfr)
+    for title, note, inlet, outlet in TABLES:
+        add_p(doc, title, size=14, bold=True, color=(31, 78, 121), space_before=8)
+        add_p(doc, note, size=12)
+        add_table(doc, inlet, outlet)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     cyr = OUT_DIR / "Пункт2_таблицы_моделирования.docx"
     lat = OUT_DIR / "Punkt2_modeling_tables.docx"
     doc.save(cyr)
-    # ASCII copy for iPhone
-    import shutil
-
     shutil.copyfile(cyr, lat)
     print("saved", cyr, lat)
 
