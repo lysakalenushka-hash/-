@@ -211,54 +211,114 @@ def build():
     # ========== п. 1 ==========
     w1 = wb.active
     w1.title = "1. Концентрации"
-    w1["A1"] = "Оформление результатов моделирования. Вариант 2. Реакторные системы"
+    w1["A1"] = "Пункт 1. Расчёт реальных концентраций веществ A, R, S. Вариант 2"
     w1["A1"].font = TITLE_FONT
-    w1.merge_cells("A1:G1")
-    w1.row_dimensions[1].height = 22
+    w1.merge_cells("A1:H1")
+    w1.row_dimensions[1].height = 24
 
     write_punkt(
         w1,
         3,
-        "Пункт 1. Реальные концентрации A, R, S через безразмерные X, Y, Z с экрана программы",
+        "Программа выдаёт безразмерные X, Y, Z (отнесённые к CA0). Реальные концентрации:",
     )
-    w1.merge_cells("A4:G6")
+    w1.merge_cells("A4:H7")
     w1["A4"] = (
-        "CA = CA0 · (1 − X)\n"
-        "CR = CA0 · Y\n"
-        "CS = CA0 · Z\n"
-        "CA0 = 30 моль/л. Ниже — пример для выхода 1-го РИС-н в схеме 1 (X, Y, Z с экрана)."
+        "CA = CA0 · (1 − X)     — непрореагировавший реагент A\n"
+        "CR = CA0 · Y          — целевой продукт R\n"
+        "CS = CA0 · Z          — побочный продукт S\n"
+        "CA0 = 30 моль/л  (вариант 2).  k1 = 0,6 мин⁻¹, k2 = 0,4 мин⁻¹ (л/р №3, n1 = n2 = 1).\n"
+        "VΣ = 100 л, v0 = 50 л/мин, 4 аппарата по Vi = 25 л."
     )
     w1["A4"].alignment = Alignment(wrap_text=True, vertical="top")
     w1["A4"].font = Font(name="Calibri", size=12)
-    w1.row_dimensions[4].height = 28
-    w1.row_dimensions[5].height = 20
-    w1.row_dimensions[6].height = 20
+    for rr in (4, 5, 6, 7):
+        w1.row_dimensions[rr].height = 20
 
+    write_punkt(w1, 9, "Пример подстановки. Система 1, выход 1-го РИС-н (X, Y, Z с экрана):")
     for i, h in enumerate(
-        ["Величина", "Формула", "Подстановка", "Результат", "", "", ""], 1
+        ["Величина", "Формула", "X, Y, Z с экрана", "Подстановка", "CA, CR, CS, моль/л"],
+        1,
     ):
-        if h:
-            style_header(w1.cell(8, i, h))
+        style_header(w1.cell(10, i, h))
+    w1.row_dimensions[10].height = 28
     x0, y0, z0 = 0.2308, 0.1923, 0.0385
     examples = [
-        ("CA, моль/л", "CA0·(1−X)", f"30·(1−{x0})", CA0 * (1 - x0)),
-        ("CR, моль/л", "CA0·Y", f"30·{y0}", CA0 * y0),
-        ("CS, моль/л", "CA0·Z", f"30·{z0}", CA0 * z0),
+        ("CA, моль/л", "CA0·(1−X)", f"X = {x0}", f"30·(1−{x0})", CA0 * (1 - x0)),
+        ("CR, моль/л", "CA0·Y", f"Y = {y0}", f"30·{y0}", CA0 * y0),
+        ("CS, моль/л", "CA0·Z", f"Z = {z0}", f"30·{z0}", CA0 * z0),
     ]
-    for i, (a, b, c, d) in enumerate(examples):
-        style_cell(w1.cell(9 + i, 1, a))
-        style_cell(w1.cell(9 + i, 2, b))
-        style_cell(w1.cell(9 + i, 3, c))
-        cell = w1.cell(9 + i, 4, d)
+    for i, (a, b, c, d, e) in enumerate(examples):
+        style_cell(w1.cell(11 + i, 1, a))
+        style_cell(w1.cell(11 + i, 2, b))
+        style_cell(w1.cell(11 + i, 3, c))
+        style_cell(w1.cell(11 + i, 4, d))
+        cell = w1.cell(11 + i, 5, e)
         style_cell(cell, CONC_FMT)
-    w1.merge_cells("A13:G14")
-    w1["A13"] = (
-        "Все таблицы пункта 2 построены по этим формулам. "
-        "k1 = 0,6 мин⁻¹, k2 = 0,4 мин⁻¹ (л/р №3, n1 = n2 = 1). "
-        "VΣ = 100 л, v0 = 50 л/мин, 4 аппарата по Vi = 25 л."
+
+    write_punkt(
+        w1,
+        15,
+        "Реальные концентрации на выходе каждого реактора (те же формулы, X Y Z с экрана / модели):",
     )
-    w1["A13"].alignment = Alignment(wrap_text=True, vertical="top")
-    set_widths(w1, [18, 18, 22, 16, 12, 12, 12])
+    headers = [
+        "Схема / аппарат",
+        "τ, мин",
+        "X",
+        "Y",
+        "Z",
+        "CA, моль/л",
+        "CR, моль/л",
+        "CS, моль/л",
+    ]
+    for i, h in enumerate(headers, 1):
+        style_header(w1.cell(16, i, h))
+    w1.row_dimensions[16].height = 28
+
+    # выходы аппаратов
+    rows_out = [
+        ("Вход в систему", 0.0, 0.0, 0.0, 0.0),
+        ("1. 4 РИС-н в ряду, реактор 1", 0.5, *CSTR_SERIES[1][-1][1:]),
+        ("1. 4 РИС-н в ряду, реактор 2", 0.5, *CSTR_SERIES[2][-1][1:]),
+        ("1. 4 РИС-н в ряду, реактор 3", 0.5, *CSTR_SERIES[3][-1][1:]),
+        ("1. 4 РИС-н в ряду, реактор 4 (выход системы)", 0.5, *CSTR_SERIES[4][-1][1:]),
+        ("2. 4 РИС-н параллельно, каждый / выход", 2.0, SINGLE_CSTR[1], SINGLE_CSTR[2], SINGLE_CSTR[3]),
+        ("3. 4 РИВ в ряду, выход системы", 2.0, SINGLE_PFR[1], SINGLE_PFR[2], SINGLE_PFR[3]),
+        ("4. 4 РИВ параллельно, каждый / выход", 2.0, SINGLE_PFR[1], SINGLE_PFR[2], SINGLE_PFR[3]),
+    ]
+    for i, (name, tau, x, y, z) in enumerate(rows_out):
+        ca, cr, cs = CA0 * (1 - x), CA0 * y, CA0 * z
+        vals = [name, tau, x, y, z, ca, cr, cs]
+        fmts = [None, "0.00", NUM_FMT, NUM_FMT, NUM_FMT, CONC_FMT, CONC_FMT, CONC_FMT]
+        for j, (v, fmt) in enumerate(zip(vals, fmts), 1):
+            cell = w1.cell(17 + i, j, v)
+            style_cell(cell, fmt)
+            if j == 1:
+                cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        if i == 0:
+            for j in range(1, 9):
+                w1.cell(17 + i, j).fill = PatternFill("solid", fgColor="F2F2F2")
+        if i == 4:
+            for j in range(1, 9):
+                w1.cell(17 + i, j).fill = PatternFill("solid", fgColor="FFF2CC")
+        if i in (6, 7):
+            for j in range(1, 9):
+                w1.cell(17 + i, j).fill = PatternFill("solid", fgColor="E2EFDA")
+        w1.row_dimensions[17 + i].height = 22
+
+    w1.merge_cells("A26:H28")
+    w1["A26"] = (
+        "Проверка материального баланса: CA + CR + CS = CA0, то есть (1−X) + Y + Z = 1. "
+        "Для выхода 1-го РИС-н: (1−0,2308)+0,1923+0,0385 = 1,0000. "
+        "Для выхода системы 1: (1−0,6498)+0,3964+0,2535 = 1,0001 (округление экрана). "
+        "Дальше все таблицы пункта 2 считаются этими же формулами."
+    )
+    w1["A26"].alignment = Alignment(wrap_text=True, vertical="top")
+    w1["A26"].font = Font(name="Calibri", size=12)
+    w1.row_dimensions[26].height = 36
+    w1.row_dimensions[27].height = 20
+    w1.row_dimensions[28].height = 20
+
+    set_widths(w1, [48, 12, 12, 12, 12, 16, 16, 16])
     w1.page_setup.orientation = "landscape"
     w1.page_setup.fitToPage = True
     w1.page_setup.fitToWidth = 1
