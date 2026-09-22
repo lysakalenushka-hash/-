@@ -17,12 +17,14 @@ OUT_DIR = Path("/workspace/reaktory_sistemy_variant2")
 CA0 = 30.0
 K1, K2 = 0.6, 0.4
 
-CSTR_SERIES = {
-    1: [(0.0, 0.0000, 0.0000, 0.0000), (0.5, 0.2308, 0.1923, 0.0385)],
-    2: [(0.0, 0.2308, 0.1923, 0.0385), (0.5, 0.4083, 0.3082, 0.1001)],
-    3: [(0.0, 0.4083, 0.3082, 0.1001), (0.5, 0.5448, 0.3706, 0.1742)],
-    4: [(0.0, 0.5448, 0.3706, 0.1742), (0.5, 0.6498, 0.3964, 0.2535)],
-}
+# Одна таблица на систему. Для каскада РИС-н — уникальные состояния по Στ.
+ROWS_CSTR_SER = [
+    (0.0, 0.0000, 0.0000, 0.0000),
+    (0.5, 0.2308, 0.1923, 0.0385),
+    (1.0, 0.4083, 0.3082, 0.1001),
+    (1.5, 0.5448, 0.3706, 0.1742),
+    (2.0, 0.6498, 0.3964, 0.2535),
+]
 ROWS_CSTR_PAR = [(0.0, 0.0000, 0.0000, 0.0000), (2.0, 0.5454, 0.3030, 0.2424)]
 
 
@@ -152,16 +154,10 @@ def add_table(doc, rows, highlight_last=True):
 
 
 def build():
-    ca_in, cr_in, cs_in = 1.0, 0.0, 0.0
-    pfr_series = []
-    for _ in range(4):
-        rows, ca_in, cr_in, cs_in = pfr_profile(0.5, 5, ca_in, cr_in, cs_in)
-        pfr_series.append(rows)
-    rows_pfr_par, *_ = pfr_profile(2.0, 10, 1.0, 0.0, 0.0)
+    rows_pfr, *_ = pfr_profile(2.0, 10, 1.0, 0.0, 0.0)
 
     doc = Document()
     for sec in doc.sections:
-        sec.orientation = sec.orientation
         sec.page_width = Cm(29.7)
         sec.page_height = Cm(21.0)
         sec.left_margin = Cm(1.5)
@@ -173,81 +169,44 @@ def build():
     add_p(doc, "Пункт 2. Таблицы результатов моделирования", size=16, bold=True, space_after=8)
     add_p(
         doc,
-        "CA0 = 30 моль/л.  CA = 30·(1−X),  CR = 30·Y,  CS = 30·Z.  "
-        "Жёлтая строка — выход аппарата.  "
-        "Для параллельных схем все четыре аппарата одинаковы, поэтому таблица одна.",
+        "Четыре исследуемые системы — четыре таблицы. "
+        "CA0 = 30 моль/л: CA = 30·(1−X), CR = 30·Y, CS = 30·Z. "
+        "τ — время пребывания по системе. Жёлтая строка — выход системы.",
         size=12,
         space_after=10,
     )
 
-    add_p(doc, "Система 1. Четыре РИС-н последовательно", size=14, bold=True, color=(31, 78, 121), space_before=6)
+    add_p(doc, "Таблица 1. Система 1 — четыре РИС-н последовательно", size=14, bold=True, color=(31, 78, 121), space_before=6)
     add_p(
         doc,
-        "Vi = 25 л, vi = 50 л/мин, τi = 0,5 мин. Данные с экрана программы (идеальное смешение, изотермический режим).",
+        "Vi = 25 л, vi = 50 л/мин, τi = 0,5 мин. Строки: вход и выходы реакторов 1–4 (с экрана программы).",
         size=12,
     )
-    for i in range(1, 5):
-        add_p(doc, f"Реактор {i}", size=13, bold=True, color=(46, 117, 182), space_before=4, space_after=4)
-        add_table(doc, CSTR_SERIES[i])
+    add_table(doc, ROWS_CSTR_SER)
 
-    add_p(doc, "Система 2. Четыре РИС-н параллельно", size=14, bold=True, color=(31, 78, 121), space_before=8)
+    add_p(doc, "Таблица 2. Система 2 — четыре РИС-н параллельно", size=14, bold=True, color=(31, 78, 121), space_before=8)
     add_p(
         doc,
-        "Vi = 25 л, vi = 12,5 л/мин, τi = 2 мин, равная нагрузка. "
-        "Выход каждого аппарата совпадает с единичным РИС-н (л/р №3, n1 = n2 = 1).",
+        "Vi = 25 л, vi = 12,5 л/мин, τi = 2 мин. Аппараты одинаковы, таблица одна.",
         size=12,
     )
-    add_p(doc, "Реакторы 1–4 (одинаковые)", size=13, bold=True, color=(46, 117, 182), space_before=4, space_after=4)
     add_table(doc, ROWS_CSTR_PAR)
 
-    add_p(doc, "Система 3. Четыре РИВ последовательно", size=14, bold=True, color=(31, 78, 121), space_before=8)
+    add_p(doc, "Таблица 3. Система 3 — четыре РИВ последовательно", size=14, bold=True, color=(31, 78, 121), space_before=8)
     add_p(
         doc,
-        "Vi = 25 л, vi = 50 л/мин, τi = 0,5 мин. Суммарное время пребывания Στ = 2 мин.",
+        "Vi = 25 л, vi = 50 л/мин, Στ = 2 мин. Четыре РИВ в ряду эквивалентны одному РИВ того же Στ.",
         size=12,
     )
-    for i, rows in enumerate(pfr_series, 1):
-        add_p(doc, f"Реактор {i}", size=13, bold=True, color=(46, 117, 182), space_before=4, space_after=4)
-        add_table(doc, rows)
+    add_table(doc, rows_pfr)
 
-    add_p(doc, "Система 4. Четыре РИВ параллельно", size=14, bold=True, color=(31, 78, 121), space_before=8)
+    add_p(doc, "Таблица 4. Система 4 — четыре РИВ параллельно", size=14, bold=True, color=(31, 78, 121), space_before=8)
     add_p(
         doc,
-        "Vi = 25 л, vi = 12,5 л/мин, τi = 2 мин. "
-        "Выход каждого аппарата совпадает с единичным РИВ (л/р №3, n1 = n2 = 1).",
+        "Vi = 25 л, vi = 12,5 л/мин, τi = 2 мин. Выход совпадает с таблицей 3 (единичный РИВ, л/р №3).",
         size=12,
     )
-    add_p(doc, "Реакторы 1–4 (одинаковые)", size=13, bold=True, color=(46, 117, 182), space_before=4, space_after=4)
-    add_table(doc, rows_pfr_par)
-
-    add_p(doc, "Краткие выходы систем", size=14, bold=True, color=(31, 78, 121), space_before=8)
-    summary = [
-        ("1. 4 РИС-н последовательно", 0.6498, 0.3964, 0.2535),
-        ("2. 4 РИС-н параллельно", 0.5454, 0.3030, 0.2424),
-        ("3. 4 РИВ последовательно", 0.6988, 0.4444, 0.2544),
-        ("4. 4 РИВ параллельно", 0.6988, 0.4444, 0.2544),
-    ]
-    tbl = doc.add_table(rows=5, cols=7)
-    tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
-    heads = ["Система", "X", "Y", "Z", "CA, моль/л", "CR, моль/л", "CS, моль/л"]
-    for j, h in enumerate(heads):
-        fill_cell(tbl.rows[0].cells[j], h, bold=True, size=11, fill="1F4E79", color=(255, 255, 255))
-    for i, (name, x, y, z) in enumerate(summary):
-        vals = [name, comma(x, 4), comma(y, 4), comma(z, 4), comma(CA0 * (1 - x), 2), comma(CA0 * y, 2), comma(CA0 * z, 2)]
-        fill = "E2EFDA" if i >= 2 else "FFF2CC"
-        for j, v in enumerate(vals):
-            fill_cell(tbl.rows[i + 1].cells[j], v, bold=(j == 0), size=11, fill=fill)
-            if j == 0:
-                tbl.rows[i + 1].cells[j].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.LEFT
-
-    add_p(
-        doc,
-        "1. 4 РИС-н в ряду: CA = 10,51, CR = 11,89, CS = 7,61 моль/л (X = 0,6498).  "
-        "2. 4 РИС-н параллельно: CA = 13,64, CR = 9,09, CS = 7,27 моль/л (X = 0,5454).  "
-        "3–4. 4 РИВ в ряду и параллельно: CA = 9,04, CR = 13,33, CS = 7,63 моль/л (X = 0,6988).",
-        size=12,
-        space_before=10,
-    )
+    add_table(doc, rows_pfr)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     cyr = OUT_DIR / "Пункт2_таблицы_моделирования.docx"
