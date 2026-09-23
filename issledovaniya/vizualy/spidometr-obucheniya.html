@@ -28,7 +28,7 @@
     .prog {
       font-size: 13px; font-weight: 700; color: var(--teal); margin-bottom: 2px;
     }
-    .time-grid { display: grid; grid-template-columns: 1fr 128px; gap: 10px; align-items: start; margin-top: 8px; }
+    .time-grid { display: grid; grid-template-columns: 1fr 108px; gap: 8px; align-items: start; margin-top: 8px; }
     .meta { color: var(--muted); font-size: 13px; text-align: right; }
     .card { background: var(--white); border-radius: 16px; }
     .hero {
@@ -94,17 +94,18 @@
     .bw .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
     .best .v { color: var(--green); }
     .worst .v { color: var(--red); }
-    .bottom { display: grid; grid-template-columns: 1.15fr 1.25fr .95fr; gap: 10px; min-height: 0; }
-    .block { padding: 12px 14px; }
-    .block h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+    .bottom { display: grid; grid-template-columns: 1.05fr 1.45fr .9fr; gap: 10px; min-height: 0; }
+    .block { padding: 10px 12px; }
+    .block h2 { margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+    .time-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .time-num { font-size: 26px; font-weight: 700; color: var(--navy); }
-    .bars { display: flex; align-items: flex-end; gap: 6px; height: 52px; margin-top: 10px; }
+    .bars { display: flex; align-items: flex-end; gap: 6px; height: 44px; margin-top: 8px; }
     .bar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
     .bar i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: #C9D6E0; }
     .bar.peak i { background: #1A9B8A; }
     .bar span { font-size: 10px; color: var(--muted); margin-top: 4px; }
     .bar.peak span { color: var(--navy); font-weight: 700; }
-    .clock-wrap { margin-top: 8px; }
+    .clock-wrap { margin-top: 4px; }
     .clock-lab { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
     .clock-lab b { color: var(--navy); }
     .hours { display: flex; height: 18px; border-radius: 6px; overflow: hidden; background: #E8EEF3; }
@@ -112,14 +113,18 @@
     .hours span.on { background: #1A9B8A; }
     .hours span.peak { background: #0E6B5E; }
     .h-labs { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 3px; }
-    .best-lesson { background: #E8F6F1; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+    .subh { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 2px 0 5px; }
+    .subh em { font-style: normal; font-weight: 600; letter-spacing: 0; text-transform: none; color: #8A94A3; }
+    .best-lesson { background: #E8F6F1; border-radius: 8px; padding: 6px 8px; margin-bottom: 4px; }
     .best-lesson .l { font-size: 10px; font-weight: 700; color: var(--green); letter-spacing: .04em; text-transform: uppercase; }
-    .best-lesson .n { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .best-lesson .n { font-size: 12px; font-weight: 700; margin-top: 1px; line-height: 1.2; }
     .wrow {
       display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
-      font-size: 12px; background: #F8E4E2; border-radius: 8px; padding: 6px 8px; margin-bottom: 4px;
+      font-size: 11px; background: #F8E4E2; border-radius: 7px; padding: 5px 7px; margin-bottom: 3px;
     }
-    .wrow b { color: var(--red); }
+    .wrow b { color: var(--red); white-space: nowrap; }
+    .wrow.good { background: #E8F6F1; }
+    .wrow.good b { color: var(--green); }
     .lead { display: grid; gap: 8px; }
     .lead .box { background: var(--off); border-radius: 10px; padding: 10px; }
     .lead .l { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
@@ -289,8 +294,16 @@
     <div class="bottom">
       <div class="card block">
         <h2>Время обучения</h2>
-        <div class="time-num">723 ч</div>
-        <div class="s">общее время в системе по компании</div>
+        <div class="time-kpis">
+          <div>
+            <div class="time-num">723 ч</div>
+            <div class="s">общее время по компании</div>
+          </div>
+          <div>
+            <div class="time-num">5 мин 20 сек</div>
+            <div class="s">среднее время в день</div>
+          </div>
+        </div>
         <div class="time-grid">
           <div>
             <div class="s" style="margin-top:8px;font-weight:700;color:#5B6778;text-transform:uppercase;letter-spacing:.04em;font-size:10px">Пик дня недели · четверг</div>
@@ -306,7 +319,7 @@
           </div>
           <div class="clock-wrap">
             <div class="clock-lab">Пик суток · <b>11:00</b></div>
-            <svg width="118" height="118" viewBox="0 0 140 140">
+            <svg width="100" height="100" viewBox="0 0 140 140">
               <circle cx="70" cy="70" r="62" fill="#F4F6F9" stroke="#D5DEE7" stroke-width="2"/>
               <path d="M70 70 L16.3 39 A62 62 0 0 1 101 16.3 Z" fill="#1A9B8A" opacity="0.35"/>
               <path d="M70 70 L16.3 39 A62 62 0 0 1 101 16.3" fill="none" stroke="#1A9B8A" stroke-width="3"/>
@@ -327,6 +340,7 @@
       </div>
       <div class="card block">
         <h2>Контент</h2>
+        <div class="subh">Сложность прохождения</div>
         <div class="best-lesson">
           <div class="l">Лучший микроурок · 90%</div>
           <div class="n">Опасность воздействия общих производственных загрязнений</div>
@@ -335,12 +349,17 @@
         <div class="wrow"><span>Опасность удушья при пожаре</span><b>16%</b></div>
         <div class="wrow"><span>Эргономические опасности</span><b>16%</b></div>
         <div class="wrow"><span>Движение по ледовым дорогам и переправам</span><b>18%</b></div>
+        <div class="subh" style="margin-top:8px">Оценка обучающимися <em>· шкала 1–5</em></div>
+        <div class="wrow good"><span>Опасность воздействия общих производственных загрязнений</span><b>4,8</b></div>
+        <div class="wrow good"><span>Оказание первой помощи пострадавшим</span><b>4,6</b></div>
+        <div class="wrow"><span>Движение по ледовым дорогам и переправам</span><b>2,1</b></div>
+        <div class="wrow"><span>Эксплуатация автомобильного транспорта</span><b>1,8</b></div>
       </div>
       <div class="card block">
         <h2>Рейтинг лидеров</h2>
         <div class="lead">
           <div class="box">
-            <div class="l">Человек</div>
+            <div class="l">Работник</div>
             <div class="n">Захаров Д. С.</div>
             <div class="d">1 место · 22 480 баллов · 87% прогресса</div>
           </div>
