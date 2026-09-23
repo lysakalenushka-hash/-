@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Демо-урок — подача в чат-боте</title>
+  <style>
+    :root { --navy:#0B1F3A; --teal:#1A9B8A; --ink:#1A2332; --muted:#5B6778; --off:#F4F6F9; --hot:#EE1020; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #D9E1EA; font-family: Calibri, "Segoe UI", sans-serif; color: var(--ink); }
+    .board { width: 1440px; height: 900px; margin: 0 auto; padding: 22px 28px 16px; }
+    h1 { margin: 0 0 6px; font-size: 22px; color: var(--navy); }
+    .lead { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; }
+    .phone {
+      background: #fff; border-radius: 28px; height: 800px; padding: 12px 12px 14px;
+      display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(11,31,58,.12);
+    }
+    .ph-top { display: flex; align-items: center; gap: 10px; padding: 8px 8px 10px; border-bottom: 1px solid #E8EEF3; }
+    .av { width: 36px; height: 36px; border-radius: 50%; background: var(--teal); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .ph-top .who { font-weight: 700; color: var(--navy); font-size: 15px; }
+    .ph-top .sub { font-size: 11px; color: var(--muted); }
+    .step { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--teal); }
+    .chat { flex: 1; overflow: hidden; padding: 12px 8px; display: flex; flex-direction: column; gap: 10px; }
+    .bot { display: flex; gap: 8px; align-items: flex-start; }
+    .bot .b { background: #E8F6F1; border-radius: 4px 16px 16px 16px; padding: 10px 12px; font-size: 14px; line-height: 1.35; max-width: 92%; }
+    .bot .b b { color: var(--navy); }
+    .ex { background: #FFF6E5; border-radius: 12px; padding: 8px 10px; font-size: 13px; }
+    .pic { border-radius: 12px; overflow: hidden; position: relative; border: 1px solid #E8EEF3; }
+    .pic img { width: 100%; display: block; }
+    .mark { position: absolute; border: 3px solid #EE1020; border-radius: 8px; background: rgba(238,16,32,.12); }
+    .mark.ok { border-color: #1A9B8A; background: rgba(26,155,138,.14); }
+    .mark span {
+      position: absolute; left: 50%; top: -11px; transform: translateX(-50%);
+      background: #EE1020; color: #fff; font-size: 10px; font-weight: 700; border-radius: 99px; padding: 1px 6px; white-space: nowrap;
+    }
+    .mark.ok span { background: #1A9B8A; }
+    .me { align-self: flex-end; background: var(--navy); color: #fff; border-radius: 16px 16px 4px 16px; padding: 8px 12px; font-size: 13px; }
+    .chips { display: flex; gap: 8px; padding: 8px; }
+    .chip { flex: 1; text-align: center; background: var(--teal); color: #fff; border-radius: 12px; padding: 11px 8px; font-weight: 700; font-size: 14px; }
+    .chip.ghost { background: var(--off); color: var(--navy); }
+    .count { font-size: 12px; font-weight: 700; color: var(--teal); }
+    .cap { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .why { font-size: 13px; background: var(--off); border-radius: 12px; padding: 8px 10px; }
+    .why + .why { margin-top: 6px; }
+    .lab { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div class="board">
+    <h1>Тот же урок, та же концепция чат-бота — яснее для глаза</h1>
+    <p class="lead">Микрокурс «Демонстрация заданий» · первый экран: найти нарушения. Слева направо: вход → действие → короткий разбор.</p>
+    <div class="row">
+      <div>
+        <div class="lab">1. Сначала смысл, потом клики</div>
+        <div class="phone">
+          <div class="ph-top">
+            <div class="av">С</div>
+            <div><div class="who">Смарта</div><div class="sub">микрокурс · 4 мин</div></div>
+            <div class="step">1 / 8</div>
+          </div>
+          <div class="chat">
+            <div class="bot"><div class="b">Сегодня тренируем глаз: увидеть опасность в обычной комнате, не в учебнике.</div></div>
+            <div class="bot"><div class="b">Пример. <b>Кабель на полу</b> — споткнуться можно сразу, даже если «все так ходят».</div></div>
+            <div class="ex">Один паттерн: то, что мешает ногам или эвакуации, — уже нарушение.</div>
+            <div class="bot"><div class="b">Дальше картинка. Найди <b>ещё два</b> таких места. Я уже отметила кабель.</div></div>
+          </div>
+          <div class="chips"><div class="chip">Открыть картинку</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="lab">2. Картинка в реплике, без сетки</div>
+        <div class="phone">
+          <div class="ph-top">
+            <div class="av">С</div>
+            <div><div class="who">Смарта</div><div class="sub">найди опасные места</div></div>
+            <div class="step">2 / 8</div>
+          </div>
+          <div class="chat">
+            <div class="bot"><div class="b">Нажми на место, где можно пострадать. Нужно 3 точки. <span class="count">отмечено 1 из 3</span></div></div>
+            <div class="pic">
+              <img src="urok-demo-hotspot-scene.png" alt="сцена" />
+              <div class="mark ok" style="left:18%;top:62%;width:16%;height:14%"><span>кабель</span></div>
+            </div>
+            <div class="cap">Без клетки 6×6 — глаз ищет сцену, а не клетки. Подпись появляется после клика.</div>
+          </div>
+          <div class="chips">
+            <div class="chip ghost">Сбросить</div>
+            <div class="chip">Проверить 1/3</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="lab">3. Разбор — короткие реплики бота</div>
+        <div class="phone">
+          <div class="ph-top">
+            <div class="av">С</div>
+            <div><div class="who">Смарта</div><div class="sub">что это значит на смене</div></div>
+            <div class="step">3 / 8</div>
+          </div>
+          <div class="chat">
+            <div class="bot"><div class="b">Три зоны. Не «угадал клетку», а правило:</div></div>
+            <div class="pic">
+              <img src="urok-demo-hotspot-scene.png" alt="сцена" />
+              <div class="mark ok" style="left:16%;top:60%;width:18%;height:16%"><span>1</span></div>
+              <div class="mark ok" style="left:38%;top:8%;width:18%;height:28%"><span>2</span></div>
+              <div class="mark ok" style="left:58%;top:28%;width:20%;height:22%"><span>3</span></div>
+            </div>
+            <div class="why"><b>1. Кабель.</b> Ноги, тележка, падение.</div>
+            <div class="why"><b>2. Лестница у «Выхода».</b> Путь эвакуации должен быть свободен.</div>
+            <div class="why"><b>3. Проход завален.</b> Обход = новые риски.</div>
+            <div class="me">Понял, ищу паттерн, не картинку</div>
+          </div>
+          <div class="chips"><div class="chip">Дальше — почему так делают</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
