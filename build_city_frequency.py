@@ -342,13 +342,13 @@ def write_book(rows, details, file_titles):
     ws = wb.active
     ws.title = "Города"
     ws.sheet_view.showGridLines = False
-    ws.merge_cells("A1:G1")
+    ws.merge_cells("A1:F1")
     ws["A1"] = "Населённые пункты по частоте упоминания"
     ws["A1"].font = FONT_TITLE
     ws["A1"].fill = FILL_TITLE
     ws["A1"].alignment = Alignment(vertical="center")
     ws.row_dimensions[1].height = 28
-    ws.merge_cells("A2:G2")
+    ws.merge_cells("A2:F2")
     ws["A2"] = (
         "Считается каждое отдельное упоминание во всех столбцах горда.xlsx, География.xlsx "
         "и Магнит_города для ПП_ Приложение 1.xlsx. «Москва 1» и «Белгород Восток» — это Москва и Белгород. "
@@ -358,7 +358,7 @@ def write_book(rows, details, file_titles):
     ws["A2"].alignment = LEFT
     ws.row_dimensions[2].height = 48
 
-    headers = ["№", "Населённый пункт", "Упоминаний", *file_titles]
+    headers = ["№", "Населённый пункт", "Упоминаний", "горда.xlsx", "География.xlsx", "Магнит"]
     for col, header in enumerate(headers, 1):
         cell = ws.cell(4, col, header)
         cell.fill = FILL_HEADER
@@ -383,7 +383,7 @@ def write_book(rows, details, file_titles):
     ws.auto_filter.ref = f"A4:{get_column_letter(3 + len(file_titles))}{4 + len(rows)}"
     ws.freeze_panes = "A5"
     ws.auto_filter.ref = f"A4:{get_column_letter(3 + len(file_titles))}{4 + len(rows)}"
-    widths = [8, 32, 16, 42, 22, 48]
+    widths = [8, 32, 16, 18, 20, 16]
     for idx, width in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(idx)].width = width
     ws.page_setup.orientation = "landscape"
@@ -396,37 +396,7 @@ def write_book(rows, details, file_titles):
     ws.page_setup.horizontalCentered = True
     ws.oddFooter.right.text = "Города по частоте, стр. &P из &N"
     ws.page_setup.horizontalDpi = 300
-
-    detail = wb.create_sheet("Упоминания")
-    detail_headers = ["Населённый пункт", "Файл", "Лист", "Ячейка", "Фрагмент"]
-    detail.append(detail_headers)
-    for item in details:
-        detail.append([item["name"], item["file"], item["sheet"], item["cell"], item["snippet"]])
-    for col in range(1, 6):
-        cell = detail.cell(1, col)
-        cell.fill = FILL_HEADER
-        cell.font = FONT_HEADER
-        cell.alignment = Alignment(wrap_text=True, vertical="center", horizontal="center")
-        cell.border = THIN
-    for row in detail.iter_rows(min_row=2, max_row=detail.max_row, max_col=5):
-        for cell in row:
-            cell.font = FONT
-            cell.border = THIN
-            cell.alignment = LEFT
-        detail.row_dimensions[row[0].row].height = 30
-    detail.auto_filter.ref = f"A1:E{detail.max_row}"
-    detail.freeze_panes = "A2"
-    for idx, width in enumerate([32, 48, 36, 12, 80], 1):
-        detail.column_dimensions[get_column_letter(idx)].width = width
-    detail.page_setup.orientation = "landscape"
-    detail.page_setup.fitToPage = True
-    detail.page_setup.fitToWidth = 1
-    detail.page_setup.fitToHeight = 0
-    detail.page_setup.paperSize = detail.PAPERSIZE_A4
-    detail.sheet_properties.pageSetUpPr.fitToPage = True
-    detail.print_title_rows = "1:1"
-    detail.oddFooter.right.text = "Упоминания, стр. &P из &N"
-    detail.page_setup.horizontalCentered = True
+    ws.sheet_view.zoomScale = 120
 
     wb.save(OUT)
 
