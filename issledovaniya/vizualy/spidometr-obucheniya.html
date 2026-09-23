@@ -11,6 +11,7 @@
       --teal: #1A9B8A;
       --gold: #D4A017;
       --red: #C0453C;
+      --hot: #EE1020;
       --green: #1B8A54;
       --off: #F4F6F9;
       --white: #fff;
@@ -84,8 +85,8 @@
     .side.good .arr, .side.good .val { color: var(--green); }
     .mid { text-align: center; }
     .mid .big { font-size: 34px; font-weight: 700; line-height: 1; }
-    .mid.red .big { color: var(--red); }
-    .mid.yellow .big { color: #B58912; }
+    .mid.red .big { color: var(--hot); }
+    .mid.yellow .big { color: var(--hot); }
     .mid .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
     .bw { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
     .bw div { background: var(--off); border-radius: 10px; padding: 7px 10px; }
@@ -245,7 +246,7 @@
             <div class="val">50%</div>
             <div class="cap">критично</div>
           </div>
-          <div class="mid yellow">
+          <div class="mid red">
             <div class="big">67,3%</div>
             <div class="hint">средний уровень по компании</div>
           </div>
