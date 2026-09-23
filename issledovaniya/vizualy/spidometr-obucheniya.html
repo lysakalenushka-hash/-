@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Спидометр обучения — компания</title>
+  <style>
+    :root {
+      --navy: #0B1F3A;
+      --ink: #1A2332;
+      --muted: #5B6778;
+      --teal: #1A9B8A;
+      --gold: #D4A017;
+      --red: #C0453C;
+      --green: #1B8A54;
+      --off: #F4F6F9;
+      --line: #E4E9F0;
+      --white: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #E8EDF3;
+      font-family: Calibri, "Segoe UI", Inter, sans-serif;
+      color: var(--ink);
+    }
+    .board {
+      width: 1440px;
+      height: 900px;
+      margin: 0 auto;
+      background: var(--off);
+      padding: 18px 22px 16px;
+      display: grid;
+      grid-template-rows: 42px 190px 188px 152px 1fr;
+      gap: 12px;
+    }
+    .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .kicker { color: var(--teal); font-size: 12px; font-weight: 700; letter-spacing: .08em; }
+    h1 { margin: 2px 0 0; font-size: 26px; color: var(--navy); letter-spacing: -.02em; }
+    .meta { color: var(--muted); font-size: 13px; text-align: right; }
+    .hero {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 12px;
+    }
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      box-shadow: 0 1px 0 rgba(11,31,58,.04);
+    }
+    .gauge-card { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 6px 8px 10px; }
+    .gauge-value { font-size: 28px; font-weight: 700; color: var(--red); line-height: 1; margin-top: -6px; }
+    .gauge-label { text-align: center; width: 100%; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--muted); margin-top: 2px; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .kpi { padding: 18px 20px 16px; }
+    .kpi .t { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+    .kpi .n { font-size: 40px; font-weight: 700; color: var(--navy); line-height: 1.1; margin-top: 10px; }
+    .kpi .s { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .row3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .metric { padding: 14px 16px 12px; border-top: 6px solid #ccc; }
+    .metric.red { border-top-color: var(--red); }
+    .metric.yellow { border-top-color: var(--gold); }
+    .metric.green { border-top-color: var(--green); }
+    .metric .head { display: flex; justify-content: space-between; align-items: center; }
+    .metric h2 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+    .pill { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
+    .pill.red { background: #F8E4E2; color: var(--red); }
+    .pill.yellow { background: #F8EED0; color: #9A7408; }
+    .pill.green { background: #D9F0E4; color: var(--green); }
+    .big { font-size: 34px; font-weight: 700; margin: 8px 0 2px; }
+    .metric.red .big { color: var(--red); }
+    .metric.yellow .big { color: #B58912; }
+    .metric.green .big { color: var(--green); }
+    .sub { font-size: 12px; color: var(--muted); }
+    .bw { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .bw div { background: var(--off); border-radius: 10px; padding: 8px 10px; }
+    .bw .l { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+    .bw .v { font-size: 14px; font-weight: 700; margin-top: 2px; }
+    .bw .best .v { color: var(--green); }
+    .bw .worst .v { color: var(--red); }
+    .bottom {
+      display: grid;
+      grid-template-columns: 1.05fr 1.35fr .9fr;
+      gap: 12px;
+    }
+    .block { padding: 14px 16px; }
+    .block h2 { margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+    .time-num { font-size: 28px; font-weight: 700; color: var(--navy); }
+    .peak { margin-top: 10px; display: flex; gap: 8px; }
+    .chip { background: var(--off); border-radius: 10px; padding: 8px 10px; flex: 1; }
+    .chip b { display: block; font-size: 15px; color: var(--navy); }
+    .chip span { font-size: 11px; color: var(--muted); }
+    .best-lesson { background: #E8F6F1; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+    .best-lesson .l { font-size: 10px; font-weight: 700; color: var(--green); letter-spacing: .04em; text-transform: uppercase; }
+    .best-lesson .n { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .worst { display: grid; gap: 5px; }
+    .wrow { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; font-size: 12px; }
+    .wrow b { color: var(--red); }
+    .lead { display: grid; gap: 8px; }
+    .lead .box { background: var(--off); border-radius: 10px; padding: 10px; }
+    .lead .l { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+    .lead .n { font-size: 16px; font-weight: 700; color: var(--navy); margin-top: 4px; }
+    .lead .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .legend {
+      display: flex; align-items: center; gap: 16px; color: var(--muted); font-size: 12px;
+      padding: 0 4px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  </style>
+</head>
+<body>
+  <div class="board">
+    <div class="top">
+      <div>
+        <div class="kicker">ЛАБ-ИНТЕЛЛЕКТ · СПИДОМЕТР ОБУЧЕНИЯ</div>
+        <h1>Ключевые показатели компании</h1>
+      </div>
+      <div class="meta">25 работников · год 2026 · план до 11.10.2026<br>Одна прокрутка · без левого меню</div>
+    </div>
+
+    <div class="hero">
+      <div class="card gauge-card">
+        <svg width="250" height="152" viewBox="0 0 250 152">
+          <!-- зоны: 0–15% зелёный, 15–25% жёлтый, 25–100% красный -->
+          <path d="M30 128 A95 95 0 0 1 79.3 41.3" fill="none" stroke="#1B8A54" stroke-width="16" stroke-linecap="butt"/>
+          <path d="M79.3 41.3 A95 95 0 0 1 110.3 35.6" fill="none" stroke="#D4A017" stroke-width="16" stroke-linecap="butt"/>
+          <path d="M110.3 35.6 A95 95 0 0 1 220 128" fill="none" stroke="#C0453C" stroke-width="16" stroke-linecap="butt"/>
+          <line x1="125" y1="128" x2="84" y2="62" stroke="#0B1F3A" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="125" cy="128" r="6" fill="#0B1F3A"/>
+        </svg>
+        <div class="gauge-value">32,2%</div>
+        <div class="gauge-label">ОТСТАВАНИЕ ОТ ПЛАНА</div>
+      </div>
+      <div class="kpis">
+        <div class="card kpi">
+          <div class="t">Учится людей</div>
+          <div class="n">25</div>
+          <div class="s">Работники в контуре обучения</div>
+        </div>
+        <div class="card kpi">
+          <div class="t">Микроуроков назначено</div>
+          <div class="n">7 471</div>
+          <div class="s">Объём плана по компании</div>
+        </div>
+        <div class="card kpi">
+          <div class="t">Микроуроков пройдено</div>
+          <div class="n">4 873</div>
+          <div class="s">Факт · 65% от назначенного</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row3">
+      <div class="card metric red">
+        <div class="head"><h2>Качество</h2><span class="pill red">зона риска</span></div>
+        <div class="big">36,9%</div>
+        <div class="sub">средний % правильных ответов</div>
+        <div class="bw">
+          <div class="best"><div class="l">Лучшее</div><div class="v">Контр. кач. 53,2%</div></div>
+          <div class="worst"><div class="l">Худшее</div><div class="v">Цех 20,5%</div></div>
+        </div>
+      </div>
+      <div class="card metric yellow">
+        <div class="head"><h2>Вовлечённость</h2><span class="pill yellow">внимание</span></div>
+        <div class="big">67,3%</div>
+        <div class="sub">средний уровень по компании</div>
+        <div class="bw">
+          <div class="best"><div class="l">Лучшее</div><div class="v">Контр. кач. 94,2%</div></div>
+          <div class="worst"><div class="l">Худшее</div><div class="v">Цех 34,2%</div></div>
+        </div>
+      </div>
+      <div class="card metric red">
+        <div class="head"><h2>Просрочка</h2><span class="pill red">зона риска</span></div>
+        <div class="big">2 408 · 32,2%</div>
+        <div class="sub">абсолютный объём и доля от назначенного</div>
+        <div class="bw">
+          <div class="best"><div class="l">Лучшее</div><div class="v">Контр. кач. 38 шт/чел</div></div>
+          <div class="worst"><div class="l">Худшее</div><div class="v">Цех 163 шт/чел</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom">
+      <div class="card block">
+        <h2>Время обучения</h2>
+        <div class="time-num">723 ч</div>
+        <div class="sub">общее время в системе по компании</div>
+        <div class="peak">
+          <div class="chip"><span>Пик дня недели</span><b>Четверг</b></div>
+          <div class="chip"><span>Пик суток</span><b>11:00 · окно 10–13</b></div>
+        </div>
+      </div>
+      <div class="card block">
+        <h2>Контент</h2>
+        <div class="best-lesson">
+          <div class="l">Лучший микроурок · 90%</div>
+          <div class="n">Опасность воздействия общих производственных загрязнений</div>
+        </div>
+        <div class="worst">
+          <div class="wrow"><span>Эксплуатация автомобильного транспорта</span><b>0%</b></div>
+          <div class="wrow"><span>Опасность удушья при пожаре</span><b>16%</b></div>
+          <div class="wrow"><span>Эргономические опасности</span><b>16%</b></div>
+          <div class="wrow"><span>Движение по ледовым дорогам и переправам</span><b>18%</b></div>
+        </div>
+      </div>
+      <div class="card block">
+        <h2>Рейтинг лидеров</h2>
+        <div class="lead">
+          <div class="box">
+            <div class="l">Человек</div>
+            <div class="n">Захаров Д. С.</div>
+            <div class="d">1 место · 22 480 баллов · 87% прогресса</div>
+          </div>
+          <div class="box">
+            <div class="l">Подразделение</div>
+            <div class="n">Контроль качества</div>
+            <div class="d">лучшее по качеству, вовлечённости и просрочке</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i class="dot" style="background:#1B8A54"></i>зелёный ≥ 70% качества / ≥ 75% вовлечённости / просрочка &lt; 15%</span>
+      <span><i class="dot" style="background:#D4A017"></i>жёлтый 50–69% / 50–74% / 15–25%</span>
+      <span><i class="dot" style="background:#C0453C"></i>красный ниже порога</span>
+    </div>
+  </div>
+</body>
+</html>
