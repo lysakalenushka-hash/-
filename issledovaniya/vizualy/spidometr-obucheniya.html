@@ -33,7 +33,7 @@
     .card { background: var(--white); border-radius: 16px; }
     .hero {
       display: grid;
-      grid-template-columns: max-content 168px minmax(300px, 400px);
+      grid-template-columns: max-content 168px minmax(420px, 1fr);
       gap: 8px;
       align-items: stretch;
       justify-content: start;
@@ -49,11 +49,16 @@
     .assign { min-width: 168px; padding-right: 16px; }
     .assign-num { font-size: 22px; font-weight: 700; color: var(--teal); margin-top: 6px; }
     .assign-sub { font-size: 14px; font-weight: 700; color: var(--navy); margin-top: 2px; }
-    .chart-card { padding: 6px 8px 4px; display: flex; flex-direction: column; min-width: 0; max-width: 400px; }
-    .chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; }
+    .chart-card { padding: 6px 10px 8px; display: flex; flex-direction: column; min-width: 0; }
+    .chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .chart-head .t { margin: 0; }
     .legs { display: flex; gap: 8px; font-size: 10px; color: var(--muted); }
     .legs i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+    .chart-body { display: grid; grid-template-columns: 28px 1fr; grid-template-rows: 1fr auto auto; gap: 0 4px; flex: 1; min-height: 0; }
+    .y-labs { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; font-size: 10px; color: #9AA3B0; padding: 2px 0 4px; }
+    .chart-svg { width: 100%; height: 110px; display: block; }
+    .x-ticks { display: grid; grid-template-columns: repeat(12, 1fr); font-size: 12px; font-weight: 700; color: #1A2332; text-align: center; line-height: 1; padding-top: 4px; }
+    .x-name { font-size: 11px; font-weight: 700; color: #5B6778; text-align: center; letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
     .t { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
     .workers-lab { text-transform: none; letter-spacing: .02em; line-height: 1.2; }
     .n { font-size: 38px; font-weight: 700; color: var(--navy); line-height: 1.05; margin-top: 10px; }
@@ -187,42 +192,34 @@
             <span><i style="background:#9AA3B0"></i>прогноз</span>
           </div>
         </div>
-        <svg viewBox="0 0 420 136" width="100%" height="128" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="factFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#22A06B" stop-opacity="0.22"/>
-              <stop offset="100%" stop-color="#22A06B" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <line x1="36" y1="14" x2="408" y2="14" stroke="#EEF2F6"/>
-          <line x1="36" y1="66" x2="408" y2="66" stroke="#EEF2F6"/>
-          <line x1="36" y1="118" x2="408" y2="118" stroke="#E4E9F0"/>
-          <text x="32" y="18" text-anchor="end" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">8к</text>
-          <text x="32" y="70" text-anchor="end" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">4к</text>
-          <text x="32" y="118" text-anchor="end" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">0</text>
-          <polygon fill="url(#factFill)"
-            points="106.9,114.0 140.4,103.8 173.8,93.8 207.3,91.2 240.7,80.3 274.2,62.0 307.6,56.2 307.6,118 106.9,118"/>
-          <polyline fill="none" stroke="#E8A317" stroke-width="2" stroke-dasharray="4 3"
-            points="106.9,108.3 140.4,89.1 173.8,71.2 207.3,67.4 240.7,57.6 274.2,37.1 307.6,26.9 341.1,20.9"/>
-          <polyline fill="none" stroke="#22A06B" stroke-width="2.2"
-            points="106.9,114.0 140.4,103.8 173.8,93.8 207.3,91.2 240.7,80.3 274.2,62.0 307.6,56.2"/>
-          <circle cx="307.6" cy="56.2" r="3" fill="#22A06B"/>
-          <polyline fill="none" stroke="#9AA3B0" stroke-width="2" stroke-dasharray="3 3"
-            points="307.6,56.2 341.1,50.3"/>
-          <circle cx="341.1" cy="50.3" r="2.5" fill="#9AA3B0"/>
-          <text x="40" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">1</text>
-          <text x="73.5" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">2</text>
-          <text x="106.9" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">3</text>
-          <text x="140.4" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">4</text>
-          <text x="173.8" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">5</text>
-          <text x="207.3" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">6</text>
-          <text x="240.7" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">7</text>
-          <text x="274.2" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">8</text>
-          <text x="307.6" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">9</text>
-          <text x="341.1" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">10</text>
-          <text x="374.5" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">11</text>
-          <text x="408" y="132" text-anchor="middle" font-size="8" fill="#9AA3B0" font-family="Calibri, sans-serif">12</text>
-        </svg>
+        <div class="chart-body">
+          <div class="y-labs"><span>8к</span><span>4к</span><span>0</span></div>
+          <svg class="chart-svg" viewBox="0 0 12 8" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="factFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#22A06B" stop-opacity="0.22"/>
+                <stop offset="100%" stop-color="#22A06B" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <line x1="0" y1="0" x2="12" y2="0" stroke="#EEF2F6" stroke-width="0.04"/>
+            <line x1="0" y1="4" x2="12" y2="4" stroke="#EEF2F6" stroke-width="0.04"/>
+            <line x1="0" y1="8" x2="12" y2="8" stroke="#E4E9F0" stroke-width="0.05"/>
+            <polygon fill="url(#factFill)"
+              points="2.5,7.694 3.5,6.904 4.5,6.141 5.5,5.939 6.5,5.103 7.5,3.695 8.5,3.246 8.5,8 2.5,8"/>
+            <polyline fill="none" stroke="#E8A317" stroke-width="0.12" stroke-dasharray="0.18 0.14"
+              points="2.5,7.25 3.5,5.775 4.5,4.4 5.5,4.104 6.5,3.354 7.5,1.779 8.5,0.991 9.5,0.529"/>
+            <polyline fill="none" stroke="#22A06B" stroke-width="0.14"
+              points="2.5,7.694 3.5,6.904 4.5,6.141 5.5,5.939 6.5,5.103 7.5,3.695 8.5,3.246"/>
+            <circle cx="8.5" cy="3.246" r="0.14" fill="#22A06B"/>
+            <polyline fill="none" stroke="#9AA3B0" stroke-width="0.12" stroke-dasharray="0.12 0.14"
+              points="8.5,3.246 9.5,2.792"/>
+            <circle cx="9.5" cy="2.792" r="0.12" fill="#9AA3B0"/>
+          </svg>
+          <div></div>
+          <div class="x-ticks"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span></div>
+          <div></div>
+          <div class="x-name">месяцы</div>
+        </div>
       </div>
     </div>
 
