@@ -16,6 +16,11 @@ SRC_CMP = Path("/home/ubuntu/.cursor/projects/workspace/uploads/Voprosi-po-elekt
 OUT_DIR = Path("/workspace/elektrobezopasnost_razdel_I")
 OUT = OUT_DIR / "Elektrobezopasnost_razdel_I.xlsx"
 OUT_CYR = OUT_DIR / "Электробезопасность_раздел_I.xlsx"
+OUT_LMS = OUT_DIR / "Elektrobezopasnost_razdel_I_LMS.xlsx"
+OUT_LMS_CYR = OUT_DIR / "Электробезопасность_раздел_I_тест.xlsx"
+
+FOLDER = "Электробезопасность. Раздел I"
+PROGRAM = "Электробезопасность. Раздел I"
 
 HEAD = PatternFill("solid", fgColor="1F4E79")
 TOPIC = PatternFill("solid", fgColor="2E75B6")
@@ -369,11 +374,107 @@ def build():
             w0.cell(r, 2).fill = CHG
         r += 1
 
+    w4 = wb.create_sheet("4. Актуальность РТН")
+    w4["A1"] = "Проверка актуальности раздела I относительно официального перечня РТН"
+    w4["A1"].font = TITLE
+    w4.merge_cells("A1:B1")
+    w4["A2"] = (
+        "Перечень утв. 10.08.2026, в ЕПТ с 01.09.2026. "
+        "Сверка 23.09.2026: 569/569 вопросов раздела I совпадают с официальным текстом."
+    )
+    w4["A2"].alignment = Alignment(wrap_text=True)
+    w4.merge_cells("A2:B2")
+
     wb.save(OUT)
     shutil.copyfile(OUT, OUT_CYR)
     print("questions", len(questions), "topics", len(topics), "cmp", counts)
     print("saved", OUT, OUT.stat().st_size)
 
 
+def _lms_header_font():
+    return Font(name="Calibri", bold=True, size=11)
+
+
+def _lms_body_font():
+    return Font(name="Calibri", size=11)
+
+
+def build_lms(topics, questions):
+    """Импорт в LMS: те же 4 листа и колонки, что в Вентиляция_и_отопление_тест.xlsx."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Questions"
+    headers = [
+        "Папка",
+        "Номер вопроса",
+        "Тип записи",
+        "Текст вопроса/ответа",
+        "Минимальное количество правильных ответов / Правильный или нет",
+        "Тип ответа",
+        "Комментарий",
+        "Изображение",
+        "Теги",
+    ]
+    wrap_head = Alignment(wrap_text=True, vertical="center")
+    wrap_body = Alignment(wrap_text=True, vertical="center")
+    hf, bf = _lms_header_font(), _lms_body_font()
+    for c, h in enumerate(headers, 1):
+        cell = ws.cell(1, c, h)
+        cell.font = hf
+        cell.alignment = wrap_head
+    ws.row_dimensions[1].height = 48
+
+    r = 2
+    for i, q in enumerate(questions, 1):
+        ws.cell(r, 1, FOLDER).font = bf
+        ws.cell(r, 1).alignment = wrap_body
+        ws.cell(r, 2, i).font = bf
+        ws.cell(r, 3, "Вопрос").font = bf
+        ws.cell(r, 4, q["text"]).font = bf
+        ws.cell(r, 4).alignment = wrap_body
+        ws.cell(r, 5, 1).font = bf
+        ws.cell(r, 6, "Выбор ответа").font = bf
+        ws.cell(r, 9, FOLDER).font = bf
+        ws.cell(r, 9).alignment = wrap_body
+        r += 1
+        for j, opt in enumerate(q["opts"]):
+            ws.cell(r, 1, FOLDER).font = bf
+            ws.cell(r, 1).alignment = wrap_body
+            ws.cell(r, 2, i).font = bf
+            ws.cell(r, 3, "Ответ").font = bf
+            ws.cell(r, 4, opt).font = bf
+            ws.cell(r, 4).alignment = wrap_body
+            # В Приложении 2 верный ответ — первый вариант.
+            ws.cell(r, 5, 1 if j == 0 else 0).font = bf
+            ws.cell(r, 9).alignment = wrap_body
+            r += 1
+
+    widths = {"A": 28, "B": 14, "C": 14, "D": 72, "E": 24, "F": 18, "G": 28, "H": 16, "I": 26}
+    for col, w in widths.items():
+        ws.column_dimensions[col].width = w
+
+    wp = wb.create_sheet("Теги программ")
+    wp["A1"] = "Наименование программ"
+    wp["B1"] = "Уникальные теги"
+    wp["C1"] = "Доп. Теги"
+    wp["A2"] = PROGRAM
+    wp["B2"] = FOLDER
+
+    wo = wb.create_sheet("Теги ОКВЭД")
+    wo["A1"] = "Наименование ОКВЭД"
+    wo["B1"] = "Уникальные теги"
+
+    wk = wb.create_sheet("Теги контингентов")
+    wk["A1"] = "Наименование контингента"
+    wk["B1"] = "Уникальные теги"
+
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    wb.save(OUT_LMS)
+    shutil.copyfile(OUT_LMS, OUT_LMS_CYR)
+    print("lms rows", r - 1, "saved", OUT_LMS, OUT_LMS.stat().st_size)
+
+
 if __name__ == "__main__":
+    topics, questions = parse_section_i(SRC_APP)
     build()
+    build_lms(topics, questions)
