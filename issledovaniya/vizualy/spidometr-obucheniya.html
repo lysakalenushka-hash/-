@@ -21,7 +21,7 @@
     .board {
       width: 1440px; height: 900px; margin: 0 auto; background: var(--off);
       padding: 16px 22px 12px;
-      display: grid; grid-template-rows: 40px 196px 214px 1fr 22px; gap: 10px;
+      display: grid; grid-template-rows: 40px 188px 228px 1fr 22px; gap: 10px;
     }
     .top { display: flex; align-items: baseline; justify-content: space-between; }
     .top h1 { margin: 0; font-size: 26px; color: var(--navy); }
@@ -88,10 +88,10 @@
     .mid.red .big { color: var(--hot); }
     .mid.yellow .big { color: var(--hot); }
     .mid .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
-    .bw { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-    .bw div { background: var(--off); border-radius: 10px; padding: 7px 10px; }
-    .bw .l { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .03em; }
-    .bw .v { font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .bw { display: grid; grid-template-columns: 1fr; gap: 4px; margin-top: 8px; }
+    .bw div { display: grid; grid-template-columns: 148px 1fr; gap: 8px; align-items: baseline; background: var(--off); border-radius: 8px; padding: 5px 10px; }
+    .bw .l { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .03em; text-transform: uppercase; }
+    .bw .v { font-size: 13px; font-weight: 700; margin: 0; }
     .best .v { color: var(--green); }
     .worst .v { color: var(--red); }
     .bottom { display: grid; grid-template-columns: 1.05fr 1.45fr .9fr; gap: 10px; min-height: 0; }
@@ -125,11 +125,14 @@
     .wrow b { color: var(--red); white-space: nowrap; }
     .wrow.good { background: #E8F6F1; }
     .wrow.good b { color: var(--green); }
-    .lead { display: grid; gap: 8px; }
-    .lead .box { background: var(--off); border-radius: 10px; padding: 10px; }
+    .lead { display: grid; gap: 5px; }
+    .lead .box { background: var(--off); border-radius: 8px; padding: 6px 8px; }
+    .lead .box.anti { background: #F8E4E2; }
     .lead .l { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
-    .lead .n { font-size: 16px; font-weight: 700; color: var(--navy); margin-top: 4px; }
-    .lead .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .lead .n { font-size: 14px; font-weight: 700; color: var(--navy); margin-top: 2px; }
+    .lead .box.anti .n { color: var(--red); }
+    .lead .d { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .block h2.anti-h { margin-top: 8px; }
     .legend { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 12px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
   </style>
@@ -367,6 +370,19 @@
             <div class="l">Подразделение</div>
             <div class="n">Контроль качества</div>
             <div class="d">лучшее по качеству, вовлечённости и просрочке</div>
+          </div>
+        </div>
+        <h2 class="anti-h">Рейтинг антилидеров</h2>
+        <div class="lead">
+          <div class="box anti">
+            <div class="l">Работник</div>
+            <div class="n">последнее место</div>
+            <div class="d">Цех · низкий прогресс</div>
+          </div>
+          <div class="box anti">
+            <div class="l">Подразделение</div>
+            <div class="n">Цех</div>
+            <div class="d">худшее по качеству, вовлечённости и просрочке</div>
           </div>
         </div>
       </div>
