@@ -22,7 +22,7 @@
 | Время | Блок | Минуты |
 | --- | --- | --- |
 | 00:00–00:15 | Рамка, правила кейса, памятка | 15 |
-| 00:15–00:50 | Задание 1. Нарушения процесса по «видео» | 35 |
+| 00:15–00:50 | Задание 1. Речь подрядчика | 35 |
 | 00:50–01:30 | Задание 2. Матрица обучений | 40 |
 | 01:30–01:40 | Перерыв | 10 |
 | 01:40–02:10 | Задание 3. Матрица ответственности | 30 |
@@ -34,7 +34,7 @@
 ## Что печатать участникам
 
 - `pamyatka-uchastnika.md`
-- `uchastniku/01-video-narusheniya.md` — раскадровка и бланк фиксации
+- `uchastniku/01-rech-podryadchika.md` — речь подрядчика и пустой бланк, без ответов
 - `uchastniku/02-matrica-obuchenij.md` — 10 карточек должностей и пустая матрица
 - `uchastniku/03-matrica-otvetstvennosti.md` — роли и карточки функций (нарезать)
 - `uchastniku/04-programma-s-oshibkami.md` — программа с заложенными ошибками, без пометок
@@ -44,7 +44,8 @@
 ## Что остается у тренера
 
 - `00-сценарий-тренера.md`
-- `treneru/01-klyuch-video.md`
+- `treneru/01-klyuch-rech.md`
+- лист «Задание 1 — карточка» в `trening/navigator-narusheniya.xlsx` — та же таблица для печати
 - `treneru/02-klyuch-matrica-obuchenij.md`
 - `treneru/03-klyuch-otvetstvennost.md`
 - `treneru/04-klyuch-programma.md`
