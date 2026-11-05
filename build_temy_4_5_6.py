@@ -126,11 +126,11 @@ def factor_block(
         add_items(doc, measures)
 
 
-def write_doc(path: Path, title: str, builder) -> None:
+def write_doc(path: Path, title: str, builder, module: str = "Модуль 1") -> None:
     shutil.copy(TEMPLATE, path)
     doc = Document(str(path))
     _clear_body(doc)
-    add_module(doc)
+    add_module(doc, module)
     add_title(doc, title)
     builder(doc)
     doc.save(str(path))
