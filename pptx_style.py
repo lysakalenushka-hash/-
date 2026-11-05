@@ -120,8 +120,8 @@ def new_slide(prs):
     return slide
 
 
-def footer(slide, page, total, topic="ТЕМА 1.1"):
-    add_text(slide, 0.55, 6.95, 7.2, 0.28, f"МОДУЛЬ 1  ·  {topic}", size=10, color=MUTED, bold=True)
+def footer(slide, page, total, topic="ТЕМА 1.1", module="МОДУЛЬ 1"):
+    add_text(slide, 0.55, 6.95, 7.2, 0.28, f"{module}  ·  {topic}", size=10, color=MUTED, bold=True)
     add_text(slide, 10.6, 6.95, 2.1, 0.28, f"{page:02d}  /  {total:02d}", size=10, color=MUTED, align=PP_ALIGN.RIGHT)
 
 
@@ -129,20 +129,20 @@ def label(slide, l, t, text="TRAINING"):
     add_text(slide, l, t, 5, 0.28, text, size=11, color=MUTED, bold=True)
 
 
-def cover(prs, *, topic, title, subtitle, photo, total, kicker="TRAINING"):
+def cover(prs, *, topic, title, subtitle, photo, total, kicker="TRAINING", module="МОДУЛЬ 1"):
     s = new_slide(prs)
     label(s, 0.7, 0.48, kicker)
-    add_text(s, 0.7, 0.85, 7.2, 0.4, "МОДУЛЬ 1", size=16, color=NAVY, bold=True)
+    add_text(s, 0.7, 0.85, 7.2, 0.4, module, size=16, color=NAVY, bold=True)
     bar(s, 0.72, 1.28, 2.4, 0.045)
     add_text(s, 0.7, 1.5, 7.4, 2.8, title, size=34, color=NAVY, name=SERIF)
     add_text(s, 0.72, 4.5, 6.8, 1.4, subtitle, size=18, color=INK)
     add_text(s, 0.72, 6.15, 6.8, 0.5, "Курс: рабочий по обслуживанию объектов", size=13, color=MUTED)
     picture(s, photo, 8.55, 0.55, 4.2, 6.4)
-    footer(s, 1, total, topic)
+    footer(s, 1, total, topic, module)
     return s
 
 
-def contents(prs, *, topic, items, total):
+def contents(prs, *, topic, items, total, module="МОДУЛЬ 1"):
     s = new_slide(prs)
     add_text(s, 0.7, 0.5, 12, 0.9, "Содержание", size=36, color=NAVY, name=SERIF)
     bar(s, 0.72, 1.4, 2.1, 0.04)
@@ -151,7 +151,7 @@ def contents(prs, *, topic, items, total):
         add_text(s, 0.85, y, 1.2, 0.55, f"//{n}", size=20, color=NAVY, bold=True)
         add_text(s, 2.2, y, 9.5, 0.55, t, size=20, color=INK)
         y += 0.78
-    footer(s, 2, total, topic)
+    footer(s, 2, total, topic, module)
     return s
 
 
